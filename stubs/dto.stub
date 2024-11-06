@@ -7,7 +7,7 @@ class {{ class }} extends BaseDTO
     public ?int $id = null;
 
     /**
-     * @param $mixed $object
+     * @param mixed $object
      * @param ...$args you can use $this->getArgs($key, $args) function to get key value
      */
     public static function fromRequest($object, ...$args): self
