@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use App\loadableRelationsEnum;
+use App\Enum\LoadableRelationsEnum;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -60,7 +60,7 @@ trait HasRelationLoader
         {
             // Filter relations to only include those defined as relationships on the model
             $validatedRelations = array_filter($relations, function ($relationKey) {
-                $relation = loadableRelationsEnum::from($relationKey);
+                $relation = LoadableRelationsEnum::from($relationKey);
                 return method_exists($this, $relation->value); // Only load if relation method exists
             });
 
