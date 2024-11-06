@@ -10,6 +10,7 @@ use App\Interfaces\IHasSearchable;
 use App\Models\AuthModel;
 use App\Models\Model;
 use App\Models\Pivot;
+use Illuminate\Http\Request;
 
 trait HasCrudOperations
 {
@@ -69,7 +70,7 @@ trait HasCrudOperations
         {
             return $this->create($this->getData($data))->loadRelationsFromRequest(); // Create model with transformed data
         }
-        return $this->create($data)->loadRelationsFromRequest();
+        return $this->create($data instanceof Request ? $data->validated() : $data)->loadRelationsFromRequest();
     }
 
     /**
@@ -87,7 +88,7 @@ trait HasCrudOperations
             $model->loadRelationsFromRequest();
             return $isUpdated;
         }
-        $isUpdated = $model->update($data);
+        $isUpdated = $model->update($data instanceof Request ? $data->validated() : $data);
         $model->loadRelationsFromRequest();
         return $isUpdated;
     }
