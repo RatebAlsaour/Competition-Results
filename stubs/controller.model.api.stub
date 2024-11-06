@@ -1,0 +1,61 @@
+<?php
+
+namespace {{ namespace }};
+
+use {{ namespacedModel }};
+use {{ rootNamespace }}Http\Controllers\Controller;
+use {{ namespacedRequests }}
+use App\Enum\FetchDataFunctionsEnum;
+use App\Http\Repositories\{{ model }}Repo;
+
+
+class {{ class }} extends Controller
+{
+    public function __construct(
+        protected {{ model }}Repo ${{ modelVariable }}Repo
+    ) {}
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $data = $this->{{ modelVariable }}Repo->fetch(FetchDataFunctionsEnum::GET);
+        return ApiResponseService::successResponse({{ model }}Resource::collection($data));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store({{ storeRequest }} $request)
+    {
+        ${{ modelVariable }} = $this->{{ modelVariable }}Repo->store($request);
+        return ApiResponseService::successResponse({{ model }}Resource::make(${{ modelVariable }}));
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show({{ model }} ${{ modelVariable }})
+    {
+        return ApiResponseService::successResponse({{ model }}Resource::make(${{ modelVariable }}));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update({{ updateRequest }} $request, {{ model }} ${{ modelVariable }})
+    {
+        $this->{{ modelVariable }}Repo->update($request, ${{ modelVariable }});
+        return ApiResponseService::successResponse({{ model }}Resource::make(${{ modelVariable }}));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy({{ model }} ${{ modelVariable }})
+    {
+        ${{ modelVariable }}->delete();
+        return ApiResponseService::deletedResponse();
+    }
+}

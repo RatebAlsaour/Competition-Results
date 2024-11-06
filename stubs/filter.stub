@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Http\Filters\{{ model }};
+
+use App\Http\Filters\Filter;
+
+class {{ name }} extends Filter
+{
+    /**
+     * Get the validation rules that apply to the filter request.
+     *
+     * @return array
+     */
+    public static function rules(): array
+    {
+        return [];
+    }
+
+    /**
+     * Apply filter query on related model.
+     * @param  \Illuminate\Database\Eloquent\Builder &$query
+     */
+    public function apply(&$query)
+    {
+        return $query;
+    }
+}

@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Http\Repositories;
+
+use App\Models\{{ model }};
+use App\Interfaces\IHasSearchable;
+use App\Interfaces\IHasFilterable;
+use App\Interfaces\IHasOrderable;
+use App\Interfaces\IHasDataTransferObjects;
+
+class {{ class }} extends BaseRepo
+{
+    // protected $filtersKeys = [];
+
+    // protected $searchable = [];
+
+    // protected $orderable = [];
+
+    public function __construct()
+    {
+        parent::__construct(new {{ model }}());
+    }
+}
