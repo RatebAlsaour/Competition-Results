@@ -21,4 +21,8 @@ return [
         'video/quicktime',
         'video/x-msvideo',
     ],
+
+    'allowed_texts_types' => [
+        'text/plain',
+    ],
 ];
