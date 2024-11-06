@@ -28,7 +28,7 @@ class {{ class }} extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function all()
     {
         $data = $this->{{ modelVariable }}Repo->fetch(FetchDataFunctionsEnum::GET);
         return ApiResponseService::successResponse({{ model }}Resource::collection($data));
