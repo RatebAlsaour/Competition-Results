@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use BaraaDark\LaravelFilter\Factories\FilterFactory;
+use App\Http\Factories\FilterFactory;
 
 trait FilteringFunctions
 {
