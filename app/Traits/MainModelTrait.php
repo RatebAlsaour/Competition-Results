@@ -4,5 +4,5 @@ namespace App\Traits;
 
 trait MainModelTrait
 {
-    use HasModelObserver;
+    use HasModelObserver, HasRelationLoader;
 }
