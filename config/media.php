@@ -8,6 +8,8 @@ return [
         'video/mp4',
         'video/quicktime',
         'video/x-msvideo',
+        'text/plain',
+        'application/octet-stream',
     ],
 
     'allowed_image_types' => [
