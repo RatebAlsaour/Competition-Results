@@ -4,6 +4,7 @@ use App\Exceptions\UnauthorizeMsgException;
 use App\Http\Middleware\SetLocal;
 use App\Http\Services\ApiResponseService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,5 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 else
                     return ApiResponseService::notFoundResponse('invalid id');
             }
+        });
+        $exceptions->render(function(AuthenticationException $exception) {
+            throw new UnauthorizeMsgException('Invalid token');
         });
     })->create();
