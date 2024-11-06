@@ -30,7 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function(NotFoundHttpException $exception, Request $request) {
             if($exception->getPrevious() instanceof ModelNotFoundException) {
-                $modelPath = explode('\\', $exception->getModel());
+                $modelPath = explode('\\', $exception->getPrevious()->getModel());
                 if(isset($modelPath[2]))
                     return ApiResponseService::notFoundResponse($modelPath[2].' invalid id');
                 else
