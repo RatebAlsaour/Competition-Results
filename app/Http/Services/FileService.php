@@ -20,7 +20,7 @@ class FileService
      * @return ?File
      * @throws FileStorageException
      */
-    public static function storeFiles(?UploadedFile $media, string $folderName, string $mediaName = 'default'): ?File
+    public static function storeFile(?UploadedFile $media, string $folderName, string $mediaName = 'default'): ?File
     {
         if(!isset($media))
         {
