@@ -25,4 +25,8 @@ return [
     'allowed_texts_types' => [
         'text/plain',
     ],
+
+    'allowed_ai_models_types' => [
+        'application/octet-stream',
+    ],
 ];
