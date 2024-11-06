@@ -17,6 +17,15 @@ class {{ class }} extends Controller
     ) {}
 
     /**
+     * Display a listing of the resource with pagination.
+     */
+    public function index()
+    {
+        $data = $this->{{ modelVariable }}Repo->fetch(FetchDataFunctionsEnum::PAGINATE);
+        return ApiResponseService::successResponse({{ model }}Resource::collection($data));
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
