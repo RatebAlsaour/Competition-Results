@@ -10,6 +10,11 @@ return [
         'video/x-msvideo',
         'text/plain',
         'application/octet-stream',
+        'audio/mpeg',
+        'audio/wav',
+        'audio/ogg',
+        'audio/aac',
+        'audio/webm',
     ],
 
     'allowed_image_types' => [
@@ -30,5 +35,13 @@ return [
 
     'allowed_ai_models_types' => [
         'application/octet-stream',
+    ],
+
+    'allowed_audio_types' => [
+        'audio/mpeg',
+        'audio/wav',
+        'audio/ogg',
+        'audio/aac',
+        'audio/webm',
     ],
 ];
