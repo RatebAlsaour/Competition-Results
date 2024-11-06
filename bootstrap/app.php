@@ -20,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(SetLocal::class);
+        $middleware->api(
+            prepend: [
+                ForceJsonResponse::class
+            ]
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function(NotFoundHttpException $exception, Request $request) {
