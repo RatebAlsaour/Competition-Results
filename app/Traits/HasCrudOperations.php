@@ -79,7 +79,7 @@ trait HasCrudOperations
      * @param Model|Pivot|AuthModel $model The model instance to update.
      * @return bool
      */
-    public function update(Model|Pivot|AuthModel &$model, mixed $data): bool
+    public function update(mixed $data, Model|Pivot|AuthModel &$model): bool
     {
         if(config('dto.dto_enabled', true) && $this instanceof IHasDataTransferObjects)
         {
