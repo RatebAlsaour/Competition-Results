@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\UnauthorizeMsgException;
+use App\Http\Middleware\SetLocal;
 use App\Http\Services\ApiResponseService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->append(SetLocal::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function(NotFoundHttpException $exception, Request $request) {
