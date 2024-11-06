@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\UnauthorizeMsgException;
+use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\SetLocal;
 use App\Http\Services\ApiResponseService;
 use Illuminate\Auth\Access\AuthorizationException;
