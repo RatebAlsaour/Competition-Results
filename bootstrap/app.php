@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 else
                     return ApiResponseService::notFoundResponse('invalid id');
             }
+            else
+                return ApiResponseService::notFoundResponse('Page Not Found. please insert right Url');
         });
         $exceptions->render(function(AuthenticationException $exception) {
             throw new UnauthorizeMsgException(trans('auth.invalid_token'));
