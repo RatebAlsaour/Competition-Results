@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 
 trait HasCrudOperations
 {
+    use HasDataTransferObjects;
+
     /**
      * Retrieves records ( get | all | paginate | first | find )
      * Applying filters and search as needed.
