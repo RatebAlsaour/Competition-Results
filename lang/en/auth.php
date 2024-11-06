@@ -13,6 +13,7 @@ return [
     |
     */
 
+    'invalid_token' => 'You must login first',
     'failed' => 'These credentials do not match with our records.',
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',

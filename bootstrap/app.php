@@ -32,6 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
         $exceptions->render(function(AuthenticationException $exception) {
-            throw new UnauthorizeMsgException('Invalid token');
+            throw new UnauthorizeMsgException(trans('auth.invalid_token'));
         });
     })->create();
