@@ -58,11 +58,17 @@ trait HasRelationLoader
         }
         else
         {
-            // Filter relations to only include those defined as relationships on the model
-            $validatedRelations = array_filter($relations, function ($relationKey) {
+            // Filter and map relations to include only those that are defined as relationships on the model,
+            // and get their respective relation names
+            $validatedRelations = array_map(function ($relationKey) {
                 $relation = LoadableRelationsEnum::from($relationKey);
-                return method_exists($this, $relation->relationName()); // Only load if relation method exists
-            });
+
+                // Check if the relation method exists on the model
+                return method_exists($this, $relation->relationName()) ? $relation->relationName() : null;
+            }, $relations);
+
+            // Filter out any null values in case any relation methods don't exist
+            $validatedRelations = array_filter($validatedRelations);
 
             if (empty($validatedRelations)) {
                 Log::warning("No valid relations to load on model " . static::class);
