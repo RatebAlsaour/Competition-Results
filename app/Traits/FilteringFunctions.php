@@ -49,7 +49,7 @@ trait FilteringFunctions
             {
                 if(in_array($key, $except)) continue;
             }
-            $filterClass = FilterFactory::create($key, $value, $this->model);
+            $filterClass = FilterFactory::create($key, $value, $this);
             $filterClass->apply($query);
         }
 
