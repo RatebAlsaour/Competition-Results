@@ -4,7 +4,7 @@ namespace App\Http\Filters\{{ model }};
 
 use App\Http\Filters\Filter;
 
-class {{ name }} extends Filter
+class {{ class }} extends Filter
 {
     /**
      * Get the validation rules that apply to the filter request.

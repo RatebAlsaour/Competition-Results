@@ -24,8 +24,10 @@ return [
     'user-mobile'=>'Phone number is wrong',
     'verified-already-mobile'=>'Your phone number already verified',
     'verified-mobile' => 'Your phone number verified successfully',
+    'sent-mobile' => 'Verification code has been sent to your phone',
 
     'user-email'=>'Email is wrong',
     'verified-already-email' => 'Your email already verified',
     'verified-email' => 'Your email verified successfully',
+    'sent-email' => 'Verification code has been sent to your email',
 ];
