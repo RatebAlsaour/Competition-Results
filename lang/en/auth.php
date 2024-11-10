@@ -21,11 +21,13 @@ return [
     'verify_first'=>'You should verify your phone or email first',
     'invalid'=>'This verified code is invalid',
 
+    'unverified-mobile' => 'Your phone number is not verified',
     'user-mobile'=>'Phone number is wrong',
     'verified-already-mobile'=>'Your phone number already verified',
     'verified-mobile' => 'Your phone number verified successfully',
     'sent-mobile' => 'Verification code has been sent to your phone',
 
+    'unverified-email' => 'Your email is not verified',
     'user-email'=>'Email is wrong',
     'verified-already-email' => 'Your email already verified',
     'verified-email' => 'Your email verified successfully',

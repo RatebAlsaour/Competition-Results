@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ForceJsonResponse::class
             ]
         );
+        $middleware->alias([
+            
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function(NotFoundHttpException $exception, Request $request) {
