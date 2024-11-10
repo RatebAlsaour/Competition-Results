@@ -127,6 +127,11 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'sms' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/firebase/firebase.log'),
+        ],
+
     ],
 
 ];

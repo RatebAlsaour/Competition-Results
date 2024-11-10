@@ -2,10 +2,10 @@
 
 return [
     'syriatel' => [
-        'SYRIATEL_SMS_JOB_NAME' => env('SYRIATEL_SMS_JOB_NAME'),
-        'SYRIATEL_SMS_USER_NAME' => env('SYRIATEL_SMS_USER_NAME'),
-        'SYRIATEL_SMS_PASSWORD' => env('SYRIATEL_SMS_PASSWORD'),
-        'SYRIATEL_SMS_SENDER' => env('SYRIATEL_SMS_SENDER'),
-        'SYRIATEL_SMS_TEMPLATE_CODE' => env('SYRIATEL_SMS_TEMPLATE_CODE'),
+        'url' => 'http://newshefaa1.lamsetshefaa.sy/api/sendSms',
+        'job_name' => env('SYRIATEL_SMS_JOB_NAME'),
+        'user_name' => env('SYRIATEL_SMS_USER_NAME'),
+        'password' => env('SYRIATEL_SMS_PASSWORD'),
+        'sender' => env('SYRIATEL_SMS_SENDER'),
     ],
 ];
