@@ -64,13 +64,14 @@ trait HasCrudOperations
      * Stores a new model instance using the provided data.
      *
      * @param mixed $data The data for the new model instance.
+     * @param mixed $args
      * @return Model|AuthModel|Pivot The newly created model instance.
      */
-    public function store(mixed $data): Model|AuthModel|Pivot
+    public function store(mixed $data, $args = null): Model|AuthModel|Pivot
     {
         if(config('dto.dto_enabled', true) && $this instanceof IHasDataTransferObjects)
         {
-            return $this->create($this->getData($data))->loadRelationsFromRequest(); // Create model with transformed data
+            return $this->create($this->getData($data, $args))->loadRelationsFromRequest(); // Create model with transformed data
         }
         return $this->create($data instanceof Request ? $data->validated() : $data)->loadRelationsFromRequest();
     }
@@ -80,13 +81,14 @@ trait HasCrudOperations
      *
      * @param mixed $data The data for updating the model.
      * @param Model|Pivot|AuthModel $model The model instance to update.
+     * @param mixed $args
      * @return bool
      */
-    public function update(mixed $data, Model|Pivot|AuthModel &$model): bool
+    public function update(mixed $data, Model|Pivot|AuthModel &$model, $args = null): bool
     {
         if(config('dto.dto_enabled', true) && $this instanceof IHasDataTransferObjects)
         {
-            $isUpdated = $model->update($this->getData($data)); // Update model with transformed data
+            $isUpdated = $model->update($this->getData($data, $args)); // Update model with transformed data
             $model->loadRelationsFromRequest();
             return $isUpdated;
         }

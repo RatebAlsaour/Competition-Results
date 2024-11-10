@@ -11,7 +11,7 @@ trait HasArgsParams
      * @param mixed ...$args
      * @return mixed|null
      */
-    protected function getArg(string $key, mixed ...$args): mixed
+    protected static function getArg(string $key, mixed ...$args): mixed
     {
         $args = $args[0];
 
