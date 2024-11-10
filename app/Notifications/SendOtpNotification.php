@@ -16,7 +16,6 @@ class SendOtpNotification extends Notification
      */
     public function __construct(
         public $code,
-        public $templateCode,
     ) {}
 
     /**
@@ -36,6 +35,6 @@ class SendOtpNotification extends Notification
     {
         return SyriatelMessage::create()
                     ->setMsg($this->code)
-                    ->setTemplateCode($this->templateCode);
+                    ->setTemplateCode(config('sms.syriatel.templates_codes.otp_template'));
     }
 }

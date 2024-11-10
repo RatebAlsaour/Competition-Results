@@ -112,4 +112,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verificatoin Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Here you may define the amount of seconds before a account verification
+    | By default, the timeout lasts for one hours.
+    |
+    */
+
+    'verification_timeout' =>  60,
+
 ];

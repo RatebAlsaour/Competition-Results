@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Notifications\Channels\SyriatelChannel;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,5 +25,6 @@ class AppServiceProvider extends ServiceProvider
         Notification::extend('syriatel', function ($app) {
             return new SyriatelChannel();
         });
+
     }
 }
