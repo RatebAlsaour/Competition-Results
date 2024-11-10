@@ -19,8 +19,8 @@ class SyriatelChannel
             'query' => [
                 'user_name'     => config('sms.syriatel.user_name'),
                 'password'      => config('sms.syriatel.password'),
-                'param_list'    => $message->msg,
-                'template_code' => $message->templateCode,
+                'param_list'    => $message->getMsg(),
+                'template_code' => $message->getTemplateCode(),
                 'sender'        => config('sms.syriatel.sender'),
                 'to'            => $notifiable->phone
             ],
