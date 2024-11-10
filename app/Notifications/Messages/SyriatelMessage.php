@@ -4,8 +4,8 @@ namespace App\Notifications\Messages;
 
 class SyriatelMessage
 {
-    protected $msg;
-    protected $templateCode;
+    protected string $msg;
+    protected string $templateCode;
 
     public static function create()
     {
@@ -22,6 +22,16 @@ class SyriatelMessage
     {
         $this->templateCode = $templateCode;
         return $this;
+    }
+
+    public function getMsg(): string
+    {
+        return $this->msg;
+    }
+
+    public function getTemplateCode(): string
+    {
+        return $this->templateCode;
     }
 
 }
