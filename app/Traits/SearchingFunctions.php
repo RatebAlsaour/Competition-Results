@@ -26,7 +26,7 @@ trait SearchingFunctions
                         $this->applyNormalSearch($query, $value);
 
                         // Apply search to concatenated field
-                        $this->applyConcatenateSearch($query, $value);
+                        // $this->applyConcatenateSearch($query, $value);
                     });
                 }
             }
@@ -119,35 +119,35 @@ trait SearchingFunctions
         }
     }
 
-    protected function applyConcatenatedRealationSearch($query, $searchValue)
-    {
-        foreach ($this->concatFiledRealation as $key => $value) {
-            $concatenatedField = 'CONCAT(' . implode(', " ", ', $value) . ')';
-            $query->whereHas($key, function ($sub) use ($concatenatedField, $value, $searchValue) {
-                $sub->selectRaw("$concatenatedField AS concatenated_field")
-                    ->whereNotNull(DB::raw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
-                        return "IFNULL($field, '')";
-                    }, $value)) . ')'))
-                    ->whereRaw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
-                        return "IFNULL($field, '')";
-                    }, $value)) . ') LIKE ?', ['%' . $searchValue . '%']);
-            });
-        }
-    }
+    // protected function applyConcatenatedRealationSearch($query, $searchValue)
+    // {
+    //     foreach ($this->concatFiledRealation as $key => $value) {
+    //         $concatenatedField = 'CONCAT(' . implode(', " ", ', $value) . ')';
+    //         $query->whereHas($key, function ($sub) use ($concatenatedField, $value, $searchValue) {
+    //             $sub->selectRaw("$concatenatedField AS concatenated_field")
+    //                 ->whereNotNull(DB::raw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
+    //                     return "IFNULL($field, '')";
+    //                 }, $value)) . ')'))
+    //                 ->whereRaw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
+    //                     return "IFNULL($field, '')";
+    //                 }, $value)) . ') LIKE ?', ['%' . $searchValue . '%']);
+    //         });
+    //     }
+    // }
 
-    protected function applyConcatenatedSearch($query, $searchValue)
-    {
-        foreach ($this->concatFiled as $key => $value) {
-            $concatenatedField = 'CONCAT(' . implode(', " ", ', $value) . ')';
-            $query->selectRaw("$concatenatedField AS concatenated_field")
-                ->whereNotNull(DB::raw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
-                    return "IFNULL($field, '')";
-                }, $value)) . ')'))
-                ->whereRaw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
-                    return "IFNULL($field, '')";
-                }, $value)) . ') LIKE ?', ['%' . $searchValue . '%']);
-        }
-    }
+    // protected function applyConcatenatedSearch($query, $searchValue)
+    // {
+    //     foreach ($this->concatFiled as $key => $value) {
+    //         $concatenatedField = 'CONCAT(' . implode(', " ", ', $value) . ')';
+    //         $query->selectRaw("$concatenatedField AS concatenated_field")
+    //             ->whereNotNull(DB::raw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
+    //                 return "IFNULL($field, '')";
+    //             }, $value)) . ')'))
+    //             ->whereRaw('CONCAT(' . implode(', " ", ', array_map(function ($field) {
+    //                 return "IFNULL($field, '')";
+    //             }, $value)) . ') LIKE ?', ['%' . $searchValue . '%']);
+    //     }
+    // }
 
     // protected function applyConcatenatedSearch($query, $searchValue)
     // {
@@ -172,21 +172,21 @@ trait SearchingFunctions
     }
 
     // Apply search to concatenated field
-    protected function applyConcatenateSearch(&$query, $value)
-    {
-        if ($this->concatFiledRealation)
-        {
-            $query->orWhere(function ($query) use ($value) {
-                $this->applyConcatenatedRealationSearch($query, $value);
-            });
-        }
-        if ($this->concatFiled)
-        {
-            $query->orWhere(function ($query) use ($value) {
-                $this->applyConcatenatedSearch($query, $value);
-            });
-        }
-    }
+    // protected function applyConcatenateSearch(&$query, $value)
+    // {
+    //     if ($this->concatFiledRealation)
+    //     {
+    //         $query->orWhere(function ($query) use ($value) {
+    //             $this->applyConcatenatedRealationSearch($query, $value);
+    //         });
+    //     }
+    //     if ($this->concatFiled)
+    //     {
+    //         $query->orWhere(function ($query) use ($value) {
+    //             $this->applyConcatenatedSearch($query, $value);
+    //         });
+    //     }
+    // }
 
     /**
      * MUST SEARCH SCOPE

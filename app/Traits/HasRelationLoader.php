@@ -56,27 +56,46 @@ trait HasRelationLoader
         if (empty($relations) || !is_array($relations)) {
             return []; // Do not load anything
         }
-        else
-        {
-            // Filter and map relations to include only those that are defined as relationships on the model,
-            // and get their respective relation names
-            $validatedRelations = array_map(function ($relationKey) {
+
+        // Initialize an array to store the relations to load
+        $relationsToLoad = [];
+
+        foreach ($relations as $relationKey) {
+            try {
                 $relation = LoadableRelationsEnum::from($relationKey);
-
-                // Check if the relation method exists on the model
-                return method_exists($this, $relation->relationName()) ? $relation->relationName() : null;
-            }, $relations);
-
-            // Filter out any null values in case any relation methods don't exist
-            $validatedRelations = array_filter($validatedRelations);
-
-            if (empty($validatedRelations)) {
-                Log::warning("No valid relations to load on model " . static::class);
-                return [];
+                $relationParts = $relation->relationName();
+            } catch (\ValueError $e) {
+                // Skip if the relation is invalid (not part of the enum)
+                continue;
             }
 
-            // Load only the validated relations
-            return [$validatedRelations];
+
+            // Split the relation key by '.' to support nested relationships
+            $relationsNames = explode('.', $relationParts);
+
+            // Get the base relation name (the first part)
+            $relationName = $relationsNames[0];
+
+
+            // Check if the relation method exists on the model
+            if (method_exists($this, $relationName)) {
+                // If there are additional parts (nested relations), add them
+                if (count($relationsNames) > 1) {
+                    // Add the nested relations to the base relation name
+                    $relationName .= '.' . implode('.', array_slice($relationsNames, 1));
+                }
+
+                // Add to the relations to load
+                $relationsToLoad[] = $relationName;
+            }
         }
+
+        // If no valid relations are found, log a warning and return an empty array
+        if (empty($relationsToLoad)) {
+            Log::warning("No valid relations to load on model " . static::class);
+            return [];
+        }
+
+        return $relationsToLoad;
     }
 }

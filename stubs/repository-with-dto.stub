@@ -10,11 +10,11 @@ use App\Interfaces\IHasDataTransferObjects;
 
 class {{ class }} extends BaseRepo
 {
-    // protected $filtersKeys = [];
+    // public $filtersKeys = [];
 
-    // protected $searchable = [];
+    // public $searchable = [];
 
-    // protected $orderable = [];
+    // public $orderable = [];
 
     public function __construct()
     {
