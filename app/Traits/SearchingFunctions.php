@@ -161,7 +161,7 @@ trait SearchingFunctions
     // Apply normal search according to searchable attribute in model
     protected function applyNormalSearch(&$query, $value)
     {
-        $searchableFields = $this->searchFileds ?? [];
+        $searchableFields = $this->searchable ?? [];
         foreach ($searchableFields as $field)
         {
 
