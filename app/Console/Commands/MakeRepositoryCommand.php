@@ -9,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 
 class MakeRepositoryCommand extends GeneratorCommand
 {
-    protected $name = 'make:repository';
+    protected $name = 'make:repo';
     protected $description = 'Create a new repository class for a model, with an optional controller and requests';
     protected $type = 'Repository';
 
