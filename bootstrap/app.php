@@ -12,6 +12,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -32,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function(NotFoundHttpException $exception, Request $request) {
+        $exceptions->render(function(NotFoundHttpException $exception) {
             if($exception->getPrevious() instanceof ModelNotFoundException) {
                 $modelPath = explode('\\', $exception->getPrevious()->getModel());
                 if(isset($modelPath[2]))
@@ -45,5 +46,8 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function(AuthenticationException $exception) {
             throw new UnauthorizeMsgException(trans('auth.invalid_token'));
+        });
+        $exceptions->render(function(AccessDeniedHttpException $exception) {
+            throw new UnauthorizeMsgException();
         });
     })->create();
