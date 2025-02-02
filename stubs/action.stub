@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Http\Actions;
+
+class {{ class }}
+{
+    public function __construct(
+    ) {}
+
+    /**
+     * Action handle
+     */
+    public function handle($request)
+    {
+        //
+    }
+}
