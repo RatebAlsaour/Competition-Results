@@ -37,23 +37,20 @@ npm run build
 - توليد مسابقة من 3330 اسماً يستغرق أقل من ثانية.
 - الـ API العام `/api/competitions/...` ما زال متاحاً (للتكامل مع أنظمة أخرى) لكن البوابة لا تستخدمه.
 
-### خطوات النشر على الخادم
+### النشر على السيرفر
 
-```bash
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
-php artisan migrate --force
-php artisan optimize              # تخزين config/routes/views
-php artisan results:build-static  # توليد ملفات النتائج (بعد كل نشر للكود أو إذا حُذف public/data)
-```
+النشر عبر **Docker** على Ubuntu — الدليل الكامل خطوة بخطوة في [`deploy.md`](deploy.md).
 
-- إعدادات Nginx جاهزة في `deploy/nginx.conf.example` (مع ترويسات التخزين وضغط gzip).
-  على Apache يُنشأ `public/data/.htaccess` تلقائياً.
-- `.env` للإنتاج: `APP_ENV=production`، `APP_DEBUG=false`، `DB_CONNECTION=mysql`،
-  ويُفضّل `CACHE_STORE=redis` و`SESSION_DRIVER=redis` إن توفر Redis (وإلا `file`).
-- فعّل OPcache في PHP وعطّل Xdebug على الخادم.
-- مجلد `public/data` يجب أن يكون قابلاً للكتابة من مستخدم PHP.
-- لتحمل أكبر: ضع الموقع خلف CDN (مثل Cloudflare)؛ كل ما يطلبه الزوار قابل للتخزين فيه.
+| الملف | الوظيفة |
+|---|---|
+| `Dockerfile` | بناء متعدد المراحل: PHP 8.3-FPM + Composer + Vite ثم صورة nginx |
+| `docker-compose.yml` | الخدمات `mysql` و `app` و `nginx` (على `127.0.0.1:8060`) |
+| `.env.docker.example` | إعدادات الإنتاج (انسخه إلى `.env.docker`) |
+| `docker/nginx/default.conf` | nginx الحاوية: ترويسات تخزين `/data` و `/build` وضغط gzip |
+| `docker/php/*` | إعدادات PHP و OPcache وعمال FPM وسكربت الإقلاع |
+| `deploy/nginx.conf.example` | nginx المضيف مع HTTPS أمام Docker |
+| `scripts/deploy-docker-server.sh` | تحديث النسخة المنشورة بأمر واحد |
+| `scripts/backup-db.sh` | نسخة احتياطية لقاعدة البيانات |
 
 ## سير العمل
 

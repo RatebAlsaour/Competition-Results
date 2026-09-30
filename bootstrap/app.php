@@ -23,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // خلف Nginx (Docker + المضيف): لمعرفة HTTPS وعنوان IP الحقيقي للزائر
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
+        }
         $middleware->append(SetLocal::class);
         $middleware->api(
             prepend: [

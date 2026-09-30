@@ -189,7 +189,10 @@ class ResultsTest extends TestCase
         ])
             ->assertCreated()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.required_documents', [['title' => 'صورة الهوية', 'notes' => []]])
+            // MySQL يعيد ترتيب مفاتيح JSON، لذلك نتحقق من القيم لا من الترتيب
+            ->assertJsonCount(1, 'data.required_documents')
+            ->assertJsonPath('data.required_documents.0.title', 'صورة الهوية')
+            ->assertJsonPath('data.required_documents.0.notes', [])
             ->json('data.id');
 
         // slug مكرر يحصل على لاحقة
