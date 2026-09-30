@@ -5,6 +5,7 @@ namespace App\Http\DTOs;
 
 use App\Exceptions\ErrorMsgException;
 use App\Traits\HasArgsParams;
+use Illuminate\Http\Request;
 use Spatie\DataTransferObject\DataTransferObject;
 
 class BaseDTO extends DataTransferObject
@@ -46,5 +47,19 @@ class BaseDTO extends DataTransferObject
             );
         }
         return true;
+    }
+
+    /**
+     * Read a field from a request or a plain object.
+     * Returns @param mixed $default when the field is not sent at all
+     * (so partial updates keep the current value instead of clearing it).
+     */
+    protected static function pick(object $object, string $key, mixed $default = null): mixed
+    {
+        if ($object instanceof Request)
+        {
+            return $object->exists($key) ? $object->input($key) : $default;
+        }
+        return property_exists($object, $key) ? $object->{$key} : $default;
     }
 }

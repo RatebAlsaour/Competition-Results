@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Http\Classes\ExcelResultsSheetReader;
+use App\Interfaces\IResultsSheetReader;
 use App\Notifications\Channels\SyriatelChannel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -14,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(IResultsSheetReader::class, ExcelResultsSheetReader::class);
     }
 
     /**

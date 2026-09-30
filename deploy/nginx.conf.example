@@ -1,0 +1,63 @@
+# Nginx — بوابة نتائج المسابقات
+# الفكرة: نتائج الزوار ملفات JSON ثابتة في public/data يقدمها Nginx مباشرة (بدون PHP ولا قاعدة بيانات).
+# PHP يُستدعى فقط لصفحة البوابة (مرة لكل زائر، بلا جلسة) ولوحة التحكم.
+
+server {
+    listen 80;
+    server_name results.example.gov.sy;           # ← عدّل
+    root /var/www/competition-results/public;     # ← عدّل
+    index index.php;
+    charset utf-8;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 512;
+    gzip_types application/json application/javascript text/css image/svg+xml;
+
+    # ---- نتائج المسابقات (ثابتة) ----
+    location = /data/competitions.json {
+        add_header Cache-Control "public, max-age=30, must-revalidate";
+        try_files $uri =404;
+    }
+    location /data/ {
+        # كل تحديث يُنشر في مجلد نسخة جديد، لذلك الملفات لا تتغير أبداً
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # ---- ملفات الواجهة (أسماؤها تحتوي بصمة) ----
+    location /build/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+    location /assets/ {
+        add_header Cache-Control "public, max-age=2592000";
+        try_files $uri =404;
+    }
+
+    # ---- Laravel ----
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;   # ← عدّل
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    # حجم ملفات الإكسل المرفوعة
+    client_max_body_size 12m;
+
+    location ~ /\.(?!well-known) { deny all; }
+}
+
+# ---- اختياري: تخزين صفحة البوابة في Nginx نفسه (micro-cache) لتخفيف PHP أكثر ----
+# fastcgi_cache_path /var/cache/nginx/portal levels=1:2 keys_zone=portal:10m max_size=50m inactive=10m;
+# ثم داخل location ~ \.php$ :
+#   fastcgi_cache portal;
+#   fastcgi_cache_key "$scheme$host$request_uri";
+#   fastcgi_cache_valid 200 60s;
+#   fastcgi_cache_bypass $cookie_laravel_session;   # لا تخزين للوحة التحكم
+#   fastcgi_no_cache $cookie_laravel_session;

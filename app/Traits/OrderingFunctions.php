@@ -15,5 +15,6 @@ trait OrderingFunctions
             $direction=  explode('.', $orderable)[1] ?? config('order.default_order_direction');
             if(isset($column)) $query->orderBy($column, $direction);
         }
+        return $query;
     }
 }

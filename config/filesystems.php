@@ -45,6 +45,15 @@ return [
             'throw' => false,
         ],
 
+        // ملفات النتائج العامة الثابتة (JSON) — يقدمها خادم الويب مباشرة دون PHP
+        'results_static' => [
+            'driver' => 'local',
+            'root' => public_path('data'),
+            'url' => env('APP_URL').'/data',
+            'visibility' => 'public',
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

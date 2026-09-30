@@ -1,66 +1,131 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# بوابة نتائج المسابقات — وزارة العدل
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+نظام لنشر نتائج أي مسابقة توظيف ومتابعة المقبولين:
 
-## About Laravel
+- **البوابة العامة** (`/`): يستعلم الزائر عن المقبولين (أساسي / احتياطي) حسب المسابقة والمحافظة والمسمى الوظيفي.
+- **لوحة التحكم** (`/admin`): إدارة المسابقات، استيراد النتائج من Excel، متابعة الأسماء، الإحصائيات، التصدير.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Laravel 11 + React (Vite).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## التشغيل لأول مرة
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed      # ينشئ «مسابقة التوظيف 2026» كمسودة
+php artisan admin:create        # إنشاء مستخدم للوحة التحكم
+npm run build
+```
 
-## Learning Laravel
+## الأداء تحت الضغط (مئات الطلبات في الثانية)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+البوابة العامة لا تستعلم من PHP أو قاعدة البيانات عن النتائج:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```
+الزائر ──► /                     (PHP مرة واحدة، بلا جلسة ولا كوكيز ولا قاعدة بيانات، Cache-Control: 60s)
+       ──► /data/competitions.json                 ┐
+       ──► /data/{slug}/{version}/index.json        ├─ ملفات JSON ثابتة يقدمها Nginx مباشرة
+       ──► /data/{slug}/{version}/r/{n}.json        ┘  (البحث بالاسم يتم في متصفح الزائر)
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- تُولَّد الملفات تلقائياً (`ResultsSnapshotService`) عند: الاستيراد، النشر/إلغاء النشر، تعديل/إضافة/حذف اسم،
+  تعديل إعدادات المسابقة. تغيير **المتابعة والملاحظات** لا يعيد التوليد لأنه غير منشور.
+- كل تحديث يُكتب في مجلد نسخة جديد ثم يُبدَّل `competitions.json` دفعة واحدة، فلا يرى الزائر ملفاً نصف مكتوب،
+  وتبقى النسخة السابقة متاحة لمن فتح الصفحة قبل التحديث.
+- توليد مسابقة من 3330 اسماً يستغرق أقل من ثانية.
+- الـ API العام `/api/competitions/...` ما زال متاحاً (للتكامل مع أنظمة أخرى) لكن البوابة لا تستخدمه.
 
-## Laravel Sponsors
+### خطوات النشر على الخادم
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan migrate --force
+php artisan optimize              # تخزين config/routes/views
+php artisan results:build-static  # توليد ملفات النتائج (بعد كل نشر للكود أو إذا حُذف public/data)
+```
 
-### Premium Partners
+- إعدادات Nginx جاهزة في `deploy/nginx.conf.example` (مع ترويسات التخزين وضغط gzip).
+  على Apache يُنشأ `public/data/.htaccess` تلقائياً.
+- `.env` للإنتاج: `APP_ENV=production`، `APP_DEBUG=false`، `DB_CONNECTION=mysql`،
+  ويُفضّل `CACHE_STORE=redis` و`SESSION_DRIVER=redis` إن توفر Redis (وإلا `file`).
+- فعّل OPcache في PHP وعطّل Xdebug على الخادم.
+- مجلد `public/data` يجب أن يكون قابلاً للكتابة من مستخدم PHP.
+- لتحمل أكبر: ضع الموقع خلف CDN (مثل Cloudflare)؛ كل ما يطلبه الزوار قابل للتخزين فيه.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## سير العمل
 
-## Contributing
+1. **لوحة التحكم ← مسابقة جديدة**: الاسم، الأوراق المطلوبة، ملاحظة المقبولين الأساسيين، طريقة الترتيب.
+2. **استيراد Excel**: رفع الملف ← فحص (ملخص حسب المحافظة + الأسطر المرفوضة) ← تأكيد.
+   - *استبدال*: يحذف الأسماء الحالية ويعتمد الملف. *إضافة*: يضيف إلى الموجود.
+3. **متابعة الأسماء**: بحث (يتجاهل أ/ا و ة/ه)، تصفية، تعديل، إضافة يدوية، حذف، تحديث حالة المتابعة
+   (بانتظار المراجعة، قدّم الأوراق، تم التعاقد، اعتذر، لم يراجع) مع ملاحظات، وتصدير Excel.
+4. **نشر على البوابة**. المسابقات غير المنشورة لا تظهر للزوار.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+الاستيراد متاح أيضاً من سطر الأوامر:
 
-## Code of Conduct
+```bash
+php artisan results:import recruitment-2026 "path/to/file.xlsx" --dry-run
+php artisan results:import recruitment-2026 "path/to/file.xlsx" [--append] [--force]
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### ملف Excel
 
-## Security Vulnerabilities
+السطر الأول عناوين الأعمدة (الورقة الأولى فقط). الأعمدة تُعرف من عناوينها في `config/results.php`:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| الحقل | عناوين مقبولة | إلزامي |
+|---|---|---|
+| الاسم | الاسم الكامل، الاسم الثلاثي، الاسم | ✔ |
+| المحافظة | المحافظة | ✔ |
+| المسمى الوظيفي | المسمى الوظيفي، الوظيفة | ✔ |
+| النتيجة | نتيجة، الحالة (يحتوي «أساسي» أو «احتياط») | ✔ |
+| العلامة | العلامة، الدرجة | |
+| تاريخ المقابلة | تاريخ المقابلة | |
 
-## License
+العلامة وتاريخ المقابلة وحالة المتابعة والملاحظات **لا تُنشر** في البوابة.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## البنية
+
+```
+Controller  →  FormRequest (تحقق)  →  Service (منطق العمل)  →  Repo (استعلامات)  →  Model
+                                        ↘ DTO (تحويل الطلب/سطر الإكسل إلى حقول النموذج)
+```
+
+| الطبقة | الملفات |
+|---|---|
+| Models | `Competition`, `Candidate`, `ResultImport` |
+| Enums | `CompetitionStatusEnum`, `CandidateStatusEnum`, `FollowUpStatusEnum`, `RankingMethodEnum` |
+| DTOs | `CompetitionData`, `CandidateData`, `SheetReadResultData` |
+| Repos | `CompetitionRepo`, `CandidateRepo`, `ResultImportRepo` (ترث `BaseRepo`) |
+| Filters | `Filters/Competition/CompetitionFilter`, `Filters/Candidate/CandidateFilter` |
+| Services | `CompetitionService`, `CandidateService`, `ResultsImportService`, `ResultsService` (عام، مع Cache), `CandidatesExportService`, `AuthService`, `ResultsCacheService` |
+| Interfaces | `IResultsSheetReader` ← `ExcelResultsSheetReader` (مربوط في `AppServiceProvider`) |
+| Controllers | `Admin/*` (لوحة التحكم)، `ResultsController` (عام) |
+
+لدعم صيغة ملفات أخرى (CSV مثلاً) يكفي كتابة صنف جديد يطبق `IResultsSheetReader` وتغيير الربط.
+
+## الـ API
+
+عام (مع Cache يُفرّغ تلقائياً عند أي تعديل):
+
+| الطلب | الوصف |
+|---|---|
+| `GET /api/competitions` | المسابقات المنشورة |
+| `GET /api/competitions/{slug}/governorates` | المحافظات |
+| `GET /api/competitions/{slug}/job-titles?governorate=` | المسميات |
+| `GET /api/competitions/{slug}/results?governorate=&job_title=` | المقبولون مرتبين |
+
+لوحة التحكم (`/api/admin/*`، جلسة + CSRF): `login`, `logout`, `me`, `competitions` (CRUD + `stats`),
+`competitions/{id}/candidates` (+ `options`, `export`), `candidates/{id}`, `competitions/{id}/imports` (+ `preview`).
+
+قائمة الأسماء تدعم معاملات المشروع المعتادة: `search-key`, `filters[candidate][governorate|job_title|status|follow_up_status]`, `max`, `page`.
+
+## التطوير
+
+```bash
+php artisan serve
+npm run dev
+php artisan test
+```
