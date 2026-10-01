@@ -180,34 +180,38 @@ docker compose exec -u www-data app php artisan results:build-static
 
 ## 11.1 التحديث عندما لا يصل السيرفر إلى الإنترنت
 
-إذا كانت شبكة السيرفر تمنع الإنترنت (`git pull` يفشل بـ `timed out` أو `Could not resolve`)، أرسل الكود
-مباشرة من جهازك إلى السيرفر عبر الشبكة الداخلية. البناء يستخدم ما نزّله السيرفر سابقاً، فلا يحتاج إنترنت
-(ما لم تتغير ملفات `composer.json` أو `package.json` أو قسم التثبيت في `Dockerfile`).
+إذا كانت شبكة السيرفر تمنع الإنترنت (`git pull` يفشل بـ `timed out` أو `Could not resolve`):
 
-**مرة واحدة على السيرفر** (يسمح باستقبال الكود مباشرة):
+- الكود يُرسل من جهازك إلى السيرفر عبر الشبكة الداخلية (`git push server`).
+- ملفات الواجهة (`public/build`) تُبنى على جهازك وتُرسل معه.
+- السيرفر يبني من صور المشروع الموجودة عليه (`Dockerfile.offline`) دون أي تنزيل.
+- شرط: لم تتغير `composer.json` / `composer.lock`. إن تغيرت يلزم إنترنت لبناء كامل مرة واحدة.
+
+**مرة واحدة على السيرفر:**
 
 ```bash
 cd /opt/competition-results && git config receive.denyCurrentBranch updateInstead
 ```
 
-**مرة واحدة على جهازك** (PowerShell أو Git Bash داخل مجلد المشروع):
+**مرة واحدة على جهازك** (داخل مجلد المشروع):
 
 ```bash
 git remote add server ssh://hr@192.168.1.52/opt/competition-results
 ```
 
-**كل تحديث:**
+**كل تحديث — على جهازك** (بعد `git commit`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/push-to-server.ps1
+```
+
+يبني الواجهة ← يرسل الكود ← يرسل الواجهة (يطلب كلمة مرور السيرفر). ثم **على السيرفر:**
 
 ```bash
-# على جهازك
-git push origin main      # GitHub (نسخة احتياطية)
-git push server main      # السيرفر مباشرة — يطلب كلمة مرور hr
-
-# على السيرفر
 cd /opt/competition-results && bash scripts/deploy-docker-server.sh main
 ```
 
-السكربت يكتشف أن GitHub غير متاح ويكمل بالنسخة التي وصلت عبر `git push server`.
+السكربت يكتشف غياب الإنترنت ويستخدم البناء البديل تلقائياً. (أو أضف `-Deploy` لسكربت PowerShell ليشغّله عنك.)
 
 ## 12. النسخ الاحتياطي
 

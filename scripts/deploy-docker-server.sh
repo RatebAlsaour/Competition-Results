@@ -21,11 +21,20 @@ fi
 echo "==> git pull ($BRANCH)"
 # إن لم يصل السيرفر إلى GitHub (شبكة بلا إنترنت)، نكمل بالنسخة الموجودة محلياً
 # — وصلت عبر "git push server" من جهاز المطور على الشبكة الداخلية (انظر deploy.md).
-if timeout 20 git fetch origin 2>/dev/null; then
+DC="docker compose"
+if [[ "${OFFLINE:-}" != "1" ]] && timeout 20 git fetch origin 2>/dev/null; then
     git checkout "$BRANCH"
     git pull --ff-only origin "$BRANCH"
 else
     echo "    تعذر الوصول إلى GitHub — المتابعة بالنسخة المحلية: $(git log -1 --format='%h %s')"
+    # بناء بدون إنترنت: من صور المشروع الحالية + ملفات الواجهة المرسلة من جهاز المطور
+    if [[ ! -f public/build/manifest.json ]]; then
+        echo "ERROR: لا إنترنت و public/build غير موجود." >&2
+        echo "       من جهازك شغّل: powershell -File scripts/push-to-server.ps1   (يبني الواجهة ويرسلها)" >&2
+        exit 1
+    fi
+    echo "    وضع بدون إنترنت: Dockerfile.offline (الواجهة المرسلة: $(date -r public/build/manifest.json '+%F %T'))"
+    DC="docker compose -f docker-compose.yml -f docker-compose.offline.yml"
 fi
 
 echo "==> Build & start"
@@ -33,7 +42,7 @@ export APP_BUILD_BRANCH="$BRANCH"
 export APP_BUILD_COMMIT="$(git rev-parse --short HEAD)"
 export APP_BUILD_COMMIT_DATE="$(git log -1 --format=%cI HEAD)"
 # Redis اختياري: INSTALL_REDIS=true COMPOSE_PROFILES=redis bash scripts/deploy-docker-server.sh
-docker compose up -d --build
+$DC up -d --build
 
 echo "==> Wait for app"
 for i in $(seq 1 30); do
