@@ -13,7 +13,8 @@ export default function LoginPage({ onLogin }) {
         try {
             onLogin(await api.post('/login', form));
         } catch (err) {
-            setError(err.status === 429 ? 'محاولات كثيرة، انتظر دقيقة ثم حاول مجدداً' : errorText(err));
+            // 429 من الخادم تحمل رسالة مدة القفل؛ من nginx تأتي بدون رسالة
+            setError(err.status === 429 && !err.message?.includes('دقيقة') ? 'محاولات كثيرة، انتظر قليلاً ثم حاول مجدداً' : errorText(err));
         } finally {
             setBusy(false);
         }

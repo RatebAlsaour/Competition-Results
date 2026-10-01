@@ -1,6 +1,7 @@
 import React from 'react';
 import sx from './sx';
 import { ResultsAPI, normalize, NAME_SEARCH_MIN } from './api';
+import { makeMatcher, highlightSegments } from './nameMatch';
 import { PatternSides, Crumbs, StatusBadge, DocsNote } from './parts';
 
 const PAGE_SIZE = 20;
@@ -263,18 +264,11 @@ export default class App extends React.Component {
     };
 
     // تمييز جزء الاسم المطابق للبحث مع مراعاة توحيد الأحرف
+    // الاسم مع تمييز كل كلمة مطابقة للبحث
     highlight(name, q) {
-        if (!q) return { pre: name, hit: '', post: '' };
-        let ns = ''; const map = [];
-        for (let i = 0; i < name.length; i++) {
-            const n = normalize(name[i]);
-            if (/\s/.test(name[i])) { if (ns && ns[ns.length - 1] !== ' ') { ns += ' '; map.push(i); } continue; }
-            for (const ch of n) { ns += ch; map.push(i); }
-        }
-        const at = ns.indexOf(q);
-        if (at < 0) return { pre: name, hit: '', post: '' };
-        const a = map[at], b = map[at + q.length - 1] + 1;
-        return { pre: name.slice(0, a), hit: name.slice(a, b), post: name.slice(b) };
+        return highlightSegments(name, q).map((seg, i) => (seg.hit
+            ? <mark key={i} style={sx('background:rgba(185,167,121,.38);color:#002623;border-radius:2px;padding:0 1px')}>{seg.text}</mark>
+            : <React.Fragment key={i}>{seg.text}</React.Fragment>));
     }
 
     renderDropdown(which) {
@@ -459,7 +453,7 @@ export default class App extends React.Component {
                                         <button type="button" className="h-row" onClick={(e) => this.openCongrats(c, e)}
                                             style={sx('width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:64px;background:#FFFFFF;border:0;text-align:right;cursor:pointer')}>
                                             <span style={sx('flex:1;min-width:0;display:flex;flex-direction:column;gap:2px')}>
-                                                <span style={sx('font-size:16px;font-weight:600;color:#002623;line-height:1.5')}>{h.pre}{h.hit && <mark style={sx('background:rgba(185,167,121,.38);color:#002623;border-radius:2px')}>{h.hit}</mark>}{h.post}</span>
+                                                <span style={sx('font-size:16px;font-weight:600;color:#002623;line-height:1.5')}>{h}</span>
                                                 <span style={sx('font-size:13px;color:#4F5D58;line-height:1.6')}>{c.governorate} · {c.jobTitle} · الترتيب {c.seq}</span>
                                             </span>
                                             <StatusBadge primary={c.status === 'primary'} row />
@@ -655,8 +649,9 @@ export default class App extends React.Component {
     renderOk() {
         const s = this.state, d = s.data;
         const hasDocs = this.docs().length > 0;
-        const q = normalize(s.search);
-        const searched = q ? d.candidates.filter((c) => c.key.includes(q)) : d.candidates;
+        const matcher = makeMatcher(s.search);
+        const q = matcher.q;
+        const searched = q ? d.candidates.filter((c) => matcher.test(c.key)) : d.candidates;
         const fil = s.filter;
         const matches = fil === 'all' ? searched : searched.filter((c) => c.status === fil);
         const nPrim = searched.filter((c) => c.status === 'primary').length;
@@ -814,7 +809,7 @@ export default class App extends React.Component {
                                         <span role="cell" style={sx('min-width:0')}>
                                             <button type="button" className="h-name" onClick={(e) => this.openCongrats(c, e)} aria-label={c.name + (primary ? ' — مقبول أساسي' : ' — مقبول احتياطي') + '، عرض التفاصيل'}
                                                 style={sx('display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;background:transparent;border:0;font-size:16px;font-weight:600;line-height:1.6;color:#002623;text-align:right;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(185,167,121,.55);text-underline-offset:5px;transition:color 180ms, text-decoration-color 180ms')}>
-                                                <span>{h.pre}{h.hit && <mark style={sx('background:rgba(185,167,121,.38);color:#002623;border-radius:2px;padding:0 1px')}>{h.hit}</mark>}{h.post}</span>
+                                                <span>{h}</span>
                                                 {s.wide && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#988561" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={sx('flex-shrink:0')}><path d="m15 6-6 6 6 6" /></svg>}
                                             </button>
                                         </span>

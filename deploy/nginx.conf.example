@@ -1,46 +1,50 @@
-# Nginx على السيرفر (المضيف) أمام Docker — ينهي HTTPS ويمرر الطلبات إلى حاوية nginx على 127.0.0.1:8060
-# المسار المقترح: /etc/nginx/sites-available/competition-results
-#   sudo ln -s /etc/nginx/sites-available/competition-results /etc/nginx/sites-enabled/
+# Nginx على السيرفر (المضيف) أمام Docker — يمرر الطلبات إلى حاوية nginx على 127.0.0.1:8060
+# المسار: /etc/nginx/sites-available/competition-results
+#   sudo ln -sf /etc/nginx/sites-available/competition-results /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
-# يمكن أن يعمل بجانب مشروع Evaluation على نفس السيرفر (ذاك على 8050 وهذا على 8060).
 
 upstream competition_results {
     server 127.0.0.1:8060;
-    keepalive 64;                 # إعادة استخدام الاتصالات مع الحاوية تحت الضغط
+    keepalive 64;
 }
 
 server {
-    listen 80;
-    server_name results.example.gov.sy;          # ← عدّل
-    return 301 https://$host$request_uri;
-}
+    # ---- الوضع الحالي: عبر IP والمنفذ 8052 (بدون SSL) ----
+    listen 8052;
+    # ---- عند ربط دومين: احذف السطر السابق وفعّل التالي ثم شغّل certbot ----
+    # listen 443 ssl http2;
+    # server_name results.example.gov.sy;
+    # ssl_certificate     /etc/letsencrypt/live/results.example.gov.sy/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/results.example.gov.sy/privkey.pem;
+    # add_header Strict-Transport-Security "max-age=31536000" always;
 
-server {
-    listen 443 ssl http2;
-    server_name results.example.gov.sy;          # ← عدّل
-
-    # يضيفها certbot تلقائياً
-    ssl_certificate     /etc/letsencrypt/live/results.example.gov.sy/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/results.example.gov.sy/privkey.pem;
-
+    server_tokens off;
     client_max_body_size 12M;
 
-    add_header Strict-Transport-Security "max-age=31536000" always;
+    # ---- (اختياري، موصى به) لوحة التحكم من الشبكة الداخلية فقط ----
+    # حتى لو سُرقت كلمة مرور، لا يمكن الدخول من الإنترنت. عدّل النطاق حسب شبكتكم.
+    # location ~ ^/(admin|api/admin)(/|$) {
+    #     allow 192.168.0.0/16;
+    #     allow 127.0.0.1;
+    #     deny all;
+    #     proxy_pass http://competition_results;
+    #     include /etc/nginx/snippets/competition-results-proxy.conf;
+    # }
 
     location / {
         proxy_pass http://competition_results;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port $server_port;
-        proxy_read_timeout 300s;
+        include /etc/nginx/snippets/competition-results-proxy.conf;
     }
 }
 
-# ملاحظة للضغط العالي: في /etc/nginx/nginx.conf اجعل
-#   worker_processes auto;
-#   events { worker_connections 4096; }
+# ---- /etc/nginx/snippets/competition-results-proxy.conf ----
+# proxy_http_version 1.1;
+# proxy_set_header Connection "";
+# proxy_set_header Host $http_host;
+# # عنوان الزائر الحقيقي — نكتب فوق أي قيمة أرسلها الزائر حتى لا يزوّر عنوانه
+# proxy_set_header X-Real-IP $remote_addr;
+# proxy_set_header X-Forwarded-For $remote_addr;
+# proxy_set_header X-Forwarded-Host $http_host;
+# proxy_set_header X-Forwarded-Proto $scheme;
+# proxy_set_header X-Forwarded-Port $server_port;
+# proxy_read_timeout 300s;

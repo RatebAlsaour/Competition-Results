@@ -8,14 +8,9 @@ async function getJson(path, init) {
     return res.json();
 }
 
-// توحيد الأحرف العربية للبحث (الهمزات، التاء المربوطة، الألف المقصورة، التشكيل)
-export function normalize(s) {
-    return String(s || '')
-        .replace(/[ً-ٰٟـ]/g, '')
-        .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
-        .replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
-        .replace(/\s+/g, ' ').trim().toLowerCase();
-}
+import { normalize, makeMatcher } from './nameMatch';
+
+export { normalize };
 
 // فهرس المسابقة يُحمَّل مرة واحدة (ملفاته لا تتغير لأن كل تحديث يُنشر في نسخة جديدة)
 const indexes = new Map();
@@ -55,11 +50,14 @@ export const NAME_SEARCH_LIMIT = 30;
 export const ResultsAPI = {
     // البحث بالاسم في كل المحافظات والمسميات: يعيد { total, items }
     searchNames: async (comp, text) => {
-        const q = normalize(text);
-        if (q.length < NAME_SEARCH_MIN) return { total: 0, items: [] };
-        const all = (await nameIndex(comp)).filter((c) => c.key.includes(q));
-        // الأسماء التي تبدأ بالنص أولاً
-        all.sort((a, b) => (b.key.startsWith(q) - a.key.startsWith(q)));
+        const m = makeMatcher(text);
+        if (m.q.length < NAME_SEARCH_MIN) return { total: 0, items: [] };
+        // كل كلمة مكتوبة يجب أن توجد في الاسم (بأي ترتيب)؛ الأقرب للنص المكتوب أولاً
+        const all = (await nameIndex(comp))
+            .filter((c) => m.test(c.key))
+            .map((c) => ({ c, s: m.score(c.key) }))
+            .sort((a, b) => a.s - b.s)
+            .map(({ c }) => c);
         return { total: all.length, items: all.slice(0, NAME_SEARCH_LIMIT) };
     },
 

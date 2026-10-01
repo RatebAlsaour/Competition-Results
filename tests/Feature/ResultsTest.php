@@ -293,6 +293,55 @@ class ResultsTest extends TestCase
         $this->get("{$url}/export")->assertOk()->assertDownload("candidates-{$competition->slug}.xlsx");
     }
 
+    public function test_dashboard_search_matches_words_in_any_order(): void
+    {
+        $competition = $this->competition();
+        $this->artisan('results:import', ['competition' => $competition->id, 'file' => $this->makeSheet([
+            ['محمد أحمد الخطيب', 'دمشق', 'ناسخ', '', 90, 'تعاقد أساسي'],
+            ['محمد علي الحلبي', 'دمشق', 'ناسخ', '', 85, 'تعاقد أساسي'],
+            ['عبدالله سمير العلي', 'دمشق', 'ناسخ', '', 80, 'ناجح احتياط'],
+            ['رنا محمود حسن', 'دمشق', 'ناسخ', '', 75, 'ناجح احتياط'],
+        ]), '--force' => true]);
+        $this->admin();
+
+        $search = fn (string $q) => collect($this->getJson("/api/admin/competitions/{$competition->id}/candidates?" . http_build_query(['search-key' => $q]))
+            ->assertOk()->json('data.data'))->pluck('full_name')->sort()->values()->all();
+
+        $this->assertSame(['محمد أحمد الخطيب'], $search('محمد الخطيب'));        // الأول والأخير
+        $this->assertSame(['محمد أحمد الخطيب'], $search('الخطيب محمد'));        // بأي ترتيب
+        $this->assertSame(['محمد أحمد الخطيب'], $search('خطيب'));               // بدون "ال"
+        $this->assertSame(['محمد أحمد الخطيب'], $search('احمد'));               // بدون همزة
+        $this->assertSame(['عبدالله سمير العلي'], $search('عبد الله العلي'));    // مسافة داخل اسم مركّب
+        $this->assertSame(['محمد أحمد الخطيب', 'محمد علي الحلبي'], $search('محمد'));
+        $this->assertSame([], $search('محمد حسن'));                              // كلتا الكلمتين مطلوبتان
+        $this->assertSame(['رنا محمود حسن'], $search('ر حسن'));                  // حرف واحد = بداية كلمة
+    }
+
+    public function test_dashboard_stats_cache_is_invalidated_on_any_change(): void
+    {
+        $competition = $this->competition();
+        $this->artisan('results:import', ['competition' => $competition->id, 'file' => $this->makeSheet($this->sampleRows()), '--force' => true]);
+        $this->admin();
+
+        $stats = fn () => $this->getJson("/api/admin/competitions/{$competition->id}/stats")->assertOk()->json('data');
+        $this->assertSame(0, $stats()['follow_up']['contracted'] ?? 0);
+
+        // تغيير المتابعة فقط (لا يمس البوابة العامة) يجب أن يحدّث الإحصائيات المخزنة
+        $candidate = $competition->candidates()->first();
+        $this->putJson("/api/admin/candidates/{$candidate->id}", ['follow_up_status' => 'contracted'])->assertOk();
+        $this->assertSame(1, $stats()['follow_up']['contracted']);
+
+        // الإضافة والحذف كذلك
+        $this->postJson("/api/admin/competitions/{$competition->id}/candidates", [
+            'full_name' => 'جديد', 'governorate' => 'حلب', 'job_title' => 'ناسخ', 'status' => 'primary',
+        ])->assertCreated();
+        $this->assertSame(5, $stats()['total']);
+        $this->getJson("/api/admin/competitions/{$competition->id}/candidates/options")->assertJsonFragment(['حلب']);
+
+        $this->deleteJson("/api/admin/candidates/{$candidate->id}")->assertOk();
+        $this->assertSame(4, $stats()['total']);
+    }
+
     public function test_public_cache_is_flushed_after_changes(): void
     {
         $competition = $this->competition();

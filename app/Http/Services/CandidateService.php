@@ -18,6 +18,8 @@ class CandidateService
     public function __construct(
         protected CandidateRepo $candidateRepo,
         protected CompetitionService $competitionService,
+        protected SecurityLogService $securityLog,
+        protected ResultsCacheService $cache,
     ) {}
 
     public function paginate(Competition $competition)
@@ -32,9 +34,12 @@ class CandidateService
      */
     public function filterOptions(Competition $competition): array
     {
+        $governorate = request()->input('governorate');
+        $scope = CompetitionService::adminScope($competition);
+
         return [
-            'governorates'     => $this->candidateRepo->governorates($competition),
-            'job_titles'       => $this->candidateRepo->jobTitles($competition, request()->input('governorate')),
+            'governorates'     => $this->cache->remember($scope, 'governorates', fn () => $this->candidateRepo->governorates($competition)),
+            'job_titles'       => $this->cache->remember($scope, 'titles:' . $governorate, fn () => $this->candidateRepo->jobTitles($competition, $governorate)),
             'statuses'         => array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], CandidateStatusEnum::cases()),
             'follow_up_statuses' => FollowUpStatusEnum::options(),
         ];
@@ -46,6 +51,7 @@ class CandidateService
             $candidate = $this->candidateRepo->store($request, ['competition' => $competition]);
             $this->candidateRepo->rerank($competition, $candidate->governorate, $candidate->job_title);
             $this->competitionService->flush($competition);
+            $this->securityLog->info('candidate.created', ['candidate_id' => $candidate->id, 'competition_id' => $competition->id, 'full_name' => $candidate->full_name]);
             return $candidate->refresh();
         });
     }
@@ -54,6 +60,7 @@ class CandidateService
     {
         return DB::transaction(function () use ($request, $candidate) {
             $oldGroup = [$candidate->governorate, $candidate->job_title];
+            $before = $candidate->only(self::PUBLIC_FIELDS);
 
             $this->candidateRepo->update($request, $candidate, ['candidate' => $candidate]);
 
@@ -67,6 +74,20 @@ class CandidateService
             if ($candidate->wasChanged(self::PUBLIC_FIELDS))
             {
                 $this->competitionService->flush($competition);
+
+                // تغيير بيانات منشورة (اسم، نتيجة، علامة...) يُسجَّل مع القيم القديمة والجديدة
+                $changed = array_intersect_key($candidate->getChanges(), array_flip(self::PUBLIC_FIELDS));
+                $this->securityLog->info('candidate.updated', [
+                    'candidate_id' => $candidate->id,
+                    'competition_id' => $competition->id,
+                    'old' => array_map(fn ($v) => $v instanceof \BackedEnum ? $v->value : $v, array_intersect_key($before, $changed)),
+                    'new' => $changed,
+                ]);
+            }
+            elseif ($candidate->wasChanged())
+            {
+                // متابعة أو ملاحظات فقط: تتغير إحصائيات لوحة التحكم فقط
+                $this->competitionService->flushAdmin($competition);
             }
 
             return $candidate->refresh();
@@ -81,5 +102,14 @@ class CandidateService
             $this->candidateRepo->rerank($competition, $candidate->governorate, $candidate->job_title);
             $this->competitionService->flush($competition);
         });
+
+        $this->securityLog->warning('candidate.deleted', [
+            'candidate_id'   => $candidate->id,
+            'competition_id' => $candidate->competition_id,
+            'full_name'      => $candidate->full_name,
+            'governorate'    => $candidate->governorate,
+            'job_title'      => $candidate->job_title,
+            'status'         => $candidate->status->value,
+        ]);
     }
 }

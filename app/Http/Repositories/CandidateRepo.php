@@ -32,11 +32,31 @@ class CandidateRepo extends BaseRepo implements IHasSearchable, IHasFilterable, 
     }
 
     /**
-     * Search on the normalized name so "احمد" matches "أحمد".
+     * Search on the normalized name ("احمد" matches "أحمد"), word by word in any order:
+     * "محمد الخطيب" finds "محمد أحمد الخطيب", "عبد الله" finds "عبدالله".
+     * Same rules as the portal (resources/js/portal/nameMatch.js).
      */
     protected function applyNormalSearch(&$query, $value)
     {
-        $query->where('search_key', 'LIKE', '%' . ArabicNormalizer::searchKey($value) . '%');
+        // % و _ رموز خاصة في LIKE ولا تظهر في الأسماء أصلاً
+        $words = array_filter(explode(' ', str_replace(['%', '_'], '', ArabicNormalizer::searchKey($value))));
+
+        foreach ($words as $like)
+        {
+            $word = $like;
+
+            if (mb_strlen($word) <= 2)
+            {
+                // حرف أو حرفان: بداية كلمة فقط (وإلا طابق كل الأسماء تقريباً)
+                $query->where(fn ($q) => $q->where('search_key', 'LIKE', $like . '%')
+                    ->orWhere('search_key', 'LIKE', '% ' . $like . '%'));
+            }
+            else
+            {
+                // أي جزء من الاسم، مع تجاهل المسافات ("عبد الله" = "عبدالله")
+                $query->whereRaw("REPLACE(search_key, ' ', '') LIKE ?", ['%' . $like . '%']);
+            }
+        }
     }
 
     /**

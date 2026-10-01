@@ -50,5 +50,7 @@ echo "==> Health check (http://127.0.0.1:${PORT})"
 curl -fsS -o /dev/null -w "  /                         -> %{http_code}\n" "http://127.0.0.1:${PORT}/" || true
 curl -fsS -o /dev/null -w "  /data/competitions.json   -> %{http_code}\n" "http://127.0.0.1:${PORT}/data/competitions.json" || true
 curl -fsS -o /dev/null -w "  /admin                    -> %{http_code}\n" "http://127.0.0.1:${PORT}/admin" || true
+echo "  page cache: $(curl -fsS -o /dev/null -D - "http://127.0.0.1:${PORT}/" 2>/dev/null | grep -i x-cache-status | tr -d '\r')"
+echo "  redis:      $(docker compose exec -T redis redis-cli ping 2>/dev/null | tr -d '\r')"
 
 echo "==> Done ($APP_BUILD_COMMIT)"

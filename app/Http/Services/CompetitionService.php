@@ -18,6 +18,7 @@ class CompetitionService
         protected CandidateRepo $candidateRepo,
         protected ResultsCacheService $cache,
         protected ResultsSnapshotService $snapshot,
+        protected SecurityLogService $securityLog,
     ) {}
 
     public function list()
@@ -53,6 +54,8 @@ class CompetitionService
         $rankingChanged = $request->filled('ranking_method')
             && $request->input('ranking_method') !== $competition->ranking_method->value;
 
+        $oldStatus = $competition->status->value;
+
         $this->competitionRepo->update($request, $competition, ['competition' => $competition]);
 
         if ($rankingChanged)
@@ -62,18 +65,37 @@ class CompetitionService
 
         $this->flush($competition);
 
-        return $competition->refresh();
+        $competition->refresh();
+        $this->securityLog->info('competition.updated', [
+            'competition_id' => $competition->id,
+            'title'          => $competition->title,
+            'fields'         => array_keys($request->all()),
+            'status'         => $oldStatus !== $competition->status->value ? "{$oldStatus} → {$competition->status->value}" : null,
+        ]);
+
+        return $competition;
     }
 
     public function delete(Competition $competition): void
     {
+        $count = $competition->candidates()->count();
         $competition->delete();
         $this->flush($competition);
+
+        $this->securityLog->warning('competition.deleted', [
+            'competition_id' => $competition->id,
+            'title'          => $competition->title,
+            'candidates'     => $count,
+        ]);
     }
 
+    /**
+     * Dashboard statistics — cached until any candidate of the competition changes.
+     */
     public function stats(Competition $competition): array
     {
-        return $this->candidateRepo->stats($competition);
+        return $this->cache->remember(self::adminScope($competition), 'stats',
+            fn () => $this->candidateRepo->stats($competition));
     }
 
     /**
@@ -85,8 +107,22 @@ class CompetitionService
         DB::afterCommit(function () use ($competition) {
             $this->cache->flush($competition->id);
             $this->cache->flush(self::PUBLIC_LIST_SCOPE);
+            $this->cache->flush(self::adminScope($competition));
             $this->snapshot->refresh($competition);
         });
+    }
+
+    /**
+     * Invalidate dashboard-only caches (stats, filter lists) — ex: a follow-up status changed.
+     */
+    public function flushAdmin(Competition $competition): void
+    {
+        DB::afterCommit(fn () => $this->cache->flush(self::adminScope($competition)));
+    }
+
+    public static function adminScope(Competition $competition): string
+    {
+        return 'admin:' . $competition->id;
     }
 
     /**

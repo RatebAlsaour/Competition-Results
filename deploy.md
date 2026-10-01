@@ -9,6 +9,7 @@
 | `nginx` | يقدّم ملفات النتائج الثابتة وملفات الواجهة مباشرة، ويمرر الباقي إلى PHP. يستمع على `127.0.0.1:8060` |
 | `app` | تطبيق Laravel (PHP 8.3-FPM) |
 | `mysql` | قاعدة بيانات MySQL 8.4 (غير مكشوفة للخارج) |
+| `redis` | كاش وجلسات وعدادات الحماية في الذاكرة (غير مكشوف للخارج) |
 
 وحدات التخزين (volumes): `mysql-data` (قاعدة البيانات)، `storage-data` (السجلات والجلسات)، `results-data` (ملفات النتائج الثابتة `public/data`).
 
@@ -103,7 +104,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-يجب أن ترى `mysql` (healthy) و `app` و `nginx` بحالة `running`.
+يجب أن ترى `mysql` و `redis` (healthy) و `app` و `nginx` بحالة `running`.
 
 ## 7. إنشاء الجداول والمستخدم الأول
 
@@ -246,17 +247,123 @@ sudo ss -ltnp | grep -E ':80|:443'
 sudo ufw status              # إن كان مفعلاً: sudo ufw allow 'Nginx Full'
 ```
 
-## 15. الأداء تحت الضغط
+## 15. الأداء تحت الضغط (الكاش)
 
-- نتائج الزوار ملفات JSON ثابتة (`/data/...`) يقدمها nginx مباشرة بدون PHP أو قاعدة بيانات، فيتحمل الموقع مئات الطلبات في الثانية.
-- صفحة البوابة `/` بلا جلسة ولا قاعدة بيانات، وتُخزَّن 60 ثانية.
-- `docker/php/www.conf`: عدد عمال PHP (`pm.max_children = 40`)؛ خفّضه إن كانت ذاكرة السيرفر أقل من 2GB.
-- لتحمل أكبر: ضع الموقع خلف CDN مثل Cloudflare؛ كل ما يطلبه الزوار قابل للتخزين فيه.
+الكاش على أربع طبقات، كل طبقة تمنع الطلب من الوصول لما بعدها:
 
-## 16. ملاحظات أمنية
+| الطبقة | ماذا يُخزَّن | المدة | الأثر |
+|---|---|---|---|
+| متصفح الزائر | ملفات الواجهة `/build` والنتائج `/data/{نسخة}` | سنة (تتغير أسماؤها عند كل تحديث) | الزائر العائد لا يطلبها مجدداً |
+| nginx — ملفات ثابتة | كل النتائج JSON + ملفات الواجهة | دائم | بدون PHP ولا قاعدة بيانات إطلاقاً |
+| nginx — صفحة البوابة `/` | نسخة HTML جاهزة | 60 ثانية | PHP مرة في الدقيقة بدل كل زائر؛ آلاف الزوار معاً = طلب واحد لـ PHP |
+| Redis (الذاكرة) | كاش Laravel، الجلسات، عدادات الحماية، إحصائيات لوحة التحكم | حتى أي تعديل | لا كتابة في قاعدة البيانات مع كل طلب |
 
-- لا ترفع `.env.docker` إلى Git.
-- MySQL غير مكشوفة للخارج (داخل شبكة Docker فقط)، و nginx الحاوية على `127.0.0.1` فقط.
-- كلمات مرور قوية لـ MySQL ولحسابات لوحة التحكم.
-- فعّل HTTPS قبل استخدام لوحة التحكم.
-- خذ نسخاً احتياطية دورية (الخطوة 12).
+- كل تعديل (استيراد، نشر، تعديل اسم أو متابعة) يمسح الكاش المتعلق به تلقائياً — لا حاجة لأي تدخل.
+- Redis داخل شبكة Docker فقط (غير مكشوف)، وبحد ذاكرة 256MB.
+- `docker/php/www.conf`: عدد عمال PHP (`pm.max_children = 40`).
+- لتحمل أكبر: CDN مثل Cloudflare أمام الموقع — كل ما يطلبه الزوار قابل للتخزين فيه.
+
+التحقق من عمل الكاش:
+
+```bash
+# الطلب الثاني يجب أن يكون HIT (من الكاش)
+curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
+curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
+# Redis يعمل ويحتوي مفاتيح
+docker compose exec redis redis-cli ping
+docker compose exec redis redis-cli info keyspace
+```
+
+## 16. الحماية من الاختراق والتخريب
+
+الحماية على عدة طبقات، إذا تجاوز المهاجم طبقة تبقى التي بعدها:
+
+| الطبقة | ماذا تمنع | أين |
+|---|---|---|
+| جدار ناري (ufw) | الوصول لأي منفذ غير SSH والموقع | `scripts/harden-server.sh` |
+| fail2ban | تخمين كلمة مرور SSH (حظر ساعة، ثم أسبوع للمتكرر) | `scripts/harden-server.sh` |
+| تحديثات أمان تلقائية | ثغرات النظام المعروفة | `scripts/harden-server.sh` |
+| حد الطلبات في nginx | الإغراق (20 طلب PHP/ثانية لكل IP)، و 10 محاولات دخول/دقيقة | `docker/nginx/default.conf` |
+| قفل الحساب | تخمين كلمة مرور لوحة التحكم حتى من عناوين متعددة (5 محاولات ← قفل 15 دقيقة) | `AuthService` |
+| ترويسات الأمان (CSP…) | حقن JavaScript (XSS)، تضمين الموقع في صفحة مزيفة | `SecurityHeaders` |
+| تنفيذ `index.php` فقط | تشغيل ملف PHP مزروع | `docker/nginx/default.conf` |
+| حجب الملفات الحساسة | قراءة `.env` أو `.git` أو ملفات الإعداد | `docker/nginx/default.conf` |
+| MySQL داخل Docker فقط | الاتصال بقاعدة البيانات من الخارج | `docker-compose.yml` |
+| حاويات بلا تصعيد صلاحيات + تدوير السجلات | استغلال حاوية مخترقة، امتلاء القرص بالسجلات | `docker-compose.yml` |
+| السجل الأمني | معرفة من فعل ماذا ومتى ومن أي IP | `storage/logs/security-*.log` |
+| نسخ احتياطي يومي | فقدان البيانات حتى لو حُذف كل شيء | `scripts/backup-db.sh` |
+
+### تفعيل حماية السيرفر (مرة واحدة)
+
+```bash
+cd /opt/competition-results && sudo bash scripts/harden-server.sh
+```
+
+عند ربط دومين مع HTTPS: `sudo ALLOW_HTTPS=true bash scripts/harden-server.sh`
+
+### السجل الأمني
+
+يسجّل: الدخول الناجح والفاشل والقفل، الخروج، الاستيراد، تعديل بيانات منشورة (مع القيم القديمة والجديدة)، الحذف، تغيير حالة النشر.
+
+```bash
+# آخر الأحداث
+docker compose exec app sh -c 'tail -n 50 storage/logs/security-*.log'
+# محاولات الدخول الفاشلة فقط
+docker compose exec app sh -c 'grep -h "login\.\(failed\|locked\)" storage/logs/security-*.log | tail -n 30'
+# المحظورون من fail2ban
+sudo fail2ban-client status sshd
+```
+
+### (موصى به) لوحة التحكم من الشبكة الداخلية فقط
+
+حتى لو سُرقت كلمة مرور، لا يمكن الدخول من خارج الشبكة. في `/etc/nginx/sites-available/competition-results` أضف داخل `server { }` قبل `location /`:
+
+```nginx
+location ~ ^/(admin|api/admin)(/|$) {
+    allow 192.168.0.0/16;
+    allow 127.0.0.1;
+    deny all;
+    proxy_pass http://competition_results;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Port $server_port;
+}
+```
+
+ثم `sudo nginx -t && sudo systemctl reload nginx`.
+
+### (موصى به) الدخول إلى SSH بالمفتاح فقط
+
+**لا تنفذ هذا قبل التأكد أن الدخول بمفتاح SSH يعمل من جهازك، وإلا ستُقفل خارج السيرفر.**
+
+من جهازك (Windows PowerShell):
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh hr@192.168.1.52 "cat >> ~/.ssh/authorized_keys"
+```
+
+جرّب الدخول في نافذة جديدة (يجب ألا يطلب كلمة مرور)، ثم على السيرفر:
+
+```bash
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' | sudo tee /etc/ssh/sshd_config.d/00-hardening.conf && sudo sshd -t && sudo systemctl reload ssh && sudo sshd -T | grep -E "^(passwordauthentication|permitrootlogin)"
+```
+
+### إذا اشتبهت باختراق
+
+1. راجع السجل الأمني ومن دخل ومتى (أعلاه).
+2. غيّر كلمات المرور: `docker compose exec -u www-data app php artisan admin:create` (نفس البريد يغيّر كلمة المرور).
+3. أنهِ كل الجلسات: `docker compose exec -u www-data app php artisan tinker --execute="DB::table('sessions')->truncate();"`
+4. استعد آخر نسخة احتياطية سليمة إن تلاعب أحد بالبيانات (القسم 12).
+5. أعد بناء الحاويات من الكود النظيف: `docker compose up -d --build --force-recreate`
+
+### قواعد عامة
+
+- لا ترفع `.env.docker` إلى Git، ولا ترسله لأحد.
+- كلمات مرور قوية (12 حرفاً على الأقل) ولكل مستخدم حسابه الخاص.
+- فعّل HTTPS عند ربط دومين.
+- لا تفتح منفذ MySQL أو 8060 في الجدار الناري.

@@ -1,5 +1,16 @@
+x-hardening: &hardening
+  # منع تصعيد الصلاحيات داخل الحاوية + تدوير السجلات (لا يمتلئ القرص عند هجوم إغراق)
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+
 services:
   mysql:
+    <<: *hardening
     image: mysql:8.4
     restart: unless-stopped
     env_file:
@@ -15,7 +26,22 @@ services:
     networks:
       - competition-results
 
+  redis:
+    <<: *hardening
+    image: redis:7-alpine
+    restart: unless-stopped
+    # ذاكرة فقط للكاش والجلسات وعدادات تحديد المعدل (ليست بيانات دائمة)
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - competition-results
+
   app:
+    <<: *hardening
     build:
       context: .
       target: app
@@ -27,8 +53,17 @@ services:
     restart: unless-stopped
     env_file:
       - .env.docker
+    environment:
+      # الكاش والجلسات وعدادات الحماية في Redis (الذاكرة) بدل قاعدة البيانات
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - storage-data:/var/www/html/storage
@@ -38,6 +73,7 @@ services:
       - competition-results
 
   nginx:
+    <<: *hardening
     build:
       context: .
       target: nginx
@@ -51,6 +87,9 @@ services:
         condition: service_started
     volumes:
       - results-data:/var/www/html/public/data:ro
+    tmpfs:
+      # نسخ صفحة البوابة المخزنة (micro-cache) — في الذاكرة
+      - /var/cache/nginx/portal:size=64m
     networks:
       - competition-results
 

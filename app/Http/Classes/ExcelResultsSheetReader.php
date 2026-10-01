@@ -36,6 +36,7 @@ class ExcelResultsSheetReader implements IResultsSheetReader
 
         $rows = [];
         $errors = [];
+        $maxRows = (int) config('results.max_rows', 100000);
 
         try
         {
@@ -54,6 +55,11 @@ class ExcelResultsSheetReader implements IResultsSheetReader
                     }
 
                     if ($this->isEmpty($cells)) continue;
+
+                    if (count($rows) + count($errors) >= $maxRows)
+                    {
+                        throw new ErrorMsgException("الملف يتجاوز الحد الأقصى ({$maxRows} سطر)");
+                    }
 
                     $parsed = $this->parseRow($cells, $map, $line);
                     is_string($parsed)

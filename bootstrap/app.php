@@ -3,6 +3,7 @@
 use App\Exceptions\UnauthorizeMsgException;
 use App\Http\Middleware\EnsurePhoneIsVerified;
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocal;
 use App\Http\Services\ApiResponseService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
         }
         $middleware->append(SetLocal::class);
+        $middleware->append(SecurityHeaders::class);
         $middleware->api(
             prepend: [
                 ForceJsonResponse::class

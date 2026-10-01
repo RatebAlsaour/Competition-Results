@@ -21,6 +21,7 @@ class ResultsImportService
         protected CandidateRepo $candidateRepo,
         protected ResultImportRepo $importRepo,
         protected CompetitionService $competitionService,
+        protected SecurityLogService $securityLog,
     ) {}
 
     /**
@@ -42,6 +43,17 @@ class ResultsImportService
             fn (array $row) => $this->withoutEmpty(CandidateData::fromObject((object) $row, ['competition' => $competition])->all()),
             $sheet->rows
         );
+
+        $replaced = $mode === self::MODE_REPLACE ? $competition->candidates()->count() : 0;
+
+        $this->securityLog->info('import.started', [
+            'competition_id' => $competition->id,
+            'file_name'      => $fileName,
+            'mode'           => $mode,
+            'rows'           => count($rows),
+            'replaced'       => $replaced,
+            'via'            => app()->runningInConsole() ? 'cli' : 'dashboard',
+        ]);
 
         return DB::transaction(function () use ($competition, $sheet, $rows, $fileName, $mode, $userId) {
             if ($mode === self::MODE_REPLACE)

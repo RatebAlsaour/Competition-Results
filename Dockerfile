@@ -20,6 +20,11 @@ RUN apt-get update \
         pcntl \
         pdo_mysql \
         zip \
+    && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
+    && rm -rf /tmp/pear \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -77,7 +82,7 @@ RUN chmod +x /usr/local/bin/competition-results-entrypoint \
         public/data \
         bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache public \
-    && composer dump-autoload --no-dev --optimize --no-interaction
+    && composer dump-autoload --no-dev --optimize --classmap-authoritative --no-interaction
 
 ENTRYPOINT ["competition-results-entrypoint"]
 CMD ["php-fpm"]
@@ -87,6 +92,7 @@ FROM nginx:1.27-alpine AS nginx
 WORKDIR /var/www/html
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/app-fastcgi.conf /etc/nginx/snippets/app-fastcgi.conf
 COPY --from=app /var/www/html/public ./public
 
 RUN mkdir -p /var/www/html/public/data
