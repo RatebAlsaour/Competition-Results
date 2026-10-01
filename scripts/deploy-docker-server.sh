@@ -19,30 +19,15 @@ if grep -qE '^APP_KEY=\s*$' .env.docker; then
 fi
 
 echo "==> git pull ($BRANCH)"
-# إن لم يصل السيرفر إلى GitHub (شبكة بلا إنترنت)، نكمل بالنسخة الموجودة محلياً
-# — وصلت عبر "git push server" من جهاز المطور على الشبكة الداخلية (انظر deploy.md).
-DC="docker compose"
-if [[ "${OFFLINE:-}" != "1" ]] && timeout 20 git fetch origin 2>/dev/null; then
-    git checkout "$BRANCH"
-    git pull --ff-only origin "$BRANCH"
-else
-    echo "    تعذر الوصول إلى GitHub — المتابعة بالنسخة المحلية: $(git log -1 --format='%h %s')"
-    # بناء بدون إنترنت: من صور المشروع الحالية + ملفات الواجهة المرسلة من جهاز المطور
-    if [[ ! -f public/build/manifest.json ]]; then
-        echo "ERROR: لا إنترنت و public/build غير موجود." >&2
-        echo "       من جهازك شغّل: powershell -File scripts/push-to-server.ps1   (يبني الواجهة ويرسلها)" >&2
-        exit 1
-    fi
-    echo "    وضع بدون إنترنت: Dockerfile.offline (الواجهة المرسلة: $(date -r public/build/manifest.json '+%F %T'))"
-    DC="docker compose -f docker-compose.yml -f docker-compose.offline.yml"
-fi
+git fetch origin
+git checkout "$BRANCH"
+git pull --ff-only origin "$BRANCH"
 
 echo "==> Build & start"
 export APP_BUILD_BRANCH="$BRANCH"
 export APP_BUILD_COMMIT="$(git rev-parse --short HEAD)"
 export APP_BUILD_COMMIT_DATE="$(git log -1 --format=%cI HEAD)"
-# Redis اختياري: INSTALL_REDIS=true COMPOSE_PROFILES=redis bash scripts/deploy-docker-server.sh
-$DC up -d --build
+docker compose up -d --build
 
 echo "==> Wait for app"
 for i in $(seq 1 30); do
@@ -66,9 +51,6 @@ curl -fsS -o /dev/null -w "  /                         -> %{http_code}\n" "http:
 curl -fsS -o /dev/null -w "  /data/competitions.json   -> %{http_code}\n" "http://127.0.0.1:${PORT}/data/competitions.json" || true
 curl -fsS -o /dev/null -w "  /admin                    -> %{http_code}\n" "http://127.0.0.1:${PORT}/admin" || true
 echo "  page cache: $(curl -fsS -o /dev/null -D - "http://127.0.0.1:${PORT}/" 2>/dev/null | grep -i x-cache-status | tr -d '\r')"
-echo "  cache:      $(grep -E '^CACHE_STORE=' .env.docker | cut -d= -f2)"
-if [[ "${COMPOSE_PROFILES:-}" == *redis* ]]; then
-    echo "  redis:      $(docker compose exec -T redis redis-cli ping 2>/dev/null | tr -d '\r')"
-fi
+echo "  redis:      $(docker compose exec -T redis redis-cli ping 2>/dev/null | tr -d '\r')"
 
 echo "==> Done ($APP_BUILD_COMMIT)"
