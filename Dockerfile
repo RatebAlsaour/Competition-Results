@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# بدون "# syntax=": يعمل البناء بدون إنترنت باستخدام الصور الموجودة على السيرفر
 
 FROM php:8.3-fpm-bookworm AS php-base
 
@@ -20,11 +20,6 @@ RUN apt-get update \
         pcntl \
         pdo_mysql \
         zip \
-    && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
-    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
-    && rm -rf /tmp/pear \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -56,6 +51,18 @@ RUN npm run build \
     && test -f public/build/manifest.json
 
 FROM php-base AS app
+
+# امتداد Redis اختياري: يحتاج إنترنت أثناء البناء (pecl). اتركه false إن كان السيرفر بلا إنترنت،
+# والنظام يعمل عندها بكاش قاعدة البيانات. لتفعيله انظر deploy.md (قسم الكاش).
+ARG INSTALL_REDIS=false
+RUN if [ "$INSTALL_REDIS" = "true" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends $PHPIZE_DEPS \
+        && pecl install redis \
+        && docker-php-ext-enable redis \
+        && apt-get purge -y --auto-remove $PHPIZE_DEPS \
+        && rm -rf /tmp/pear /var/lib/apt/lists/*; \
+    fi
 
 ARG APP_BUILD_BRANCH=
 ARG APP_BUILD_COMMIT=

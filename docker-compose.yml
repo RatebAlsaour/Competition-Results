@@ -29,6 +29,8 @@ services:
   redis:
     <<: *hardening
     image: redis:7-alpine
+    # اختيارية: تعمل فقط مع COMPOSE_PROFILES=redis (تحتاج إنترنت أول مرة لتنزيل الصورة)
+    profiles: ["redis"]
     restart: unless-stopped
     # ذاكرة فقط للكاش والجلسات وعدادات تحديد المعدل (ليست بيانات دائمة)
     command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
@@ -49,21 +51,14 @@ services:
         APP_BUILD_BRANCH: ${APP_BUILD_BRANCH:-}
         APP_BUILD_COMMIT: ${APP_BUILD_COMMIT:-}
         APP_BUILD_COMMIT_DATE: ${APP_BUILD_COMMIT_DATE:-}
+        INSTALL_REDIS: ${INSTALL_REDIS:-false}
     image: competition-results-app:latest
     restart: unless-stopped
     env_file:
       - .env.docker
-    environment:
-      # الكاش والجلسات وعدادات الحماية في Redis (الذاكرة) بدل قاعدة البيانات
-      CACHE_STORE: redis
-      SESSION_DRIVER: redis
-      REDIS_CLIENT: phpredis
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
+    # الكاش والجلسات: database افتراضياً، أو redis عند تفعيله (CACHE_STORE و SESSION_DRIVER في .env.docker)
     depends_on:
       mysql:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     volumes:
       - storage-data:/var/www/html/storage

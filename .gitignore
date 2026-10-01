@@ -22,3 +22,6 @@ yarn-error.log
 /.zed
 /public/data
 /backups
+
+# إعدادات الإنتاج (كلمات مرور) — لا تُرفع أبداً
+.env.docker

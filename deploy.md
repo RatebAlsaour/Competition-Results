@@ -9,7 +9,7 @@
 | `nginx` | يقدّم ملفات النتائج الثابتة وملفات الواجهة مباشرة، ويمرر الباقي إلى PHP. يستمع على `127.0.0.1:8060` |
 | `app` | تطبيق Laravel (PHP 8.3-FPM) |
 | `mysql` | قاعدة بيانات MySQL 8.4 (غير مكشوفة للخارج) |
-| `redis` | كاش وجلسات وعدادات الحماية في الذاكرة (غير مكشوف للخارج) |
+| `redis` | (اختياري) كاش وجلسات في الذاكرة — انظر القسم 15 |
 
 وحدات التخزين (volumes): `mysql-data` (قاعدة البيانات)، `storage-data` (السجلات والجلسات)، `results-data` (ملفات النتائج الثابتة `public/data`).
 
@@ -104,7 +104,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-يجب أن ترى `mysql` و `redis` (healthy) و `app` و `nginx` بحالة `running`.
+يجب أن ترى `mysql` (healthy) و `app` و `nginx` بحالة `running`.
 
 ## 7. إنشاء الجداول والمستخدم الأول
 
@@ -177,6 +177,37 @@ docker compose up -d --build
 docker compose exec -u www-data app php artisan migrate --force
 docker compose exec -u www-data app php artisan results:build-static
 ```
+
+## 11.1 التحديث عندما لا يصل السيرفر إلى الإنترنت
+
+إذا كانت شبكة السيرفر تمنع الإنترنت (`git pull` يفشل بـ `timed out` أو `Could not resolve`)، أرسل الكود
+مباشرة من جهازك إلى السيرفر عبر الشبكة الداخلية. البناء يستخدم ما نزّله السيرفر سابقاً، فلا يحتاج إنترنت
+(ما لم تتغير ملفات `composer.json` أو `package.json` أو قسم التثبيت في `Dockerfile`).
+
+**مرة واحدة على السيرفر** (يسمح باستقبال الكود مباشرة):
+
+```bash
+cd /opt/competition-results && git config receive.denyCurrentBranch updateInstead
+```
+
+**مرة واحدة على جهازك** (PowerShell أو Git Bash داخل مجلد المشروع):
+
+```bash
+git remote add server ssh://hr@192.168.1.52/opt/competition-results
+```
+
+**كل تحديث:**
+
+```bash
+# على جهازك
+git push origin main      # GitHub (نسخة احتياطية)
+git push server main      # السيرفر مباشرة — يطلب كلمة مرور hr
+
+# على السيرفر
+cd /opt/competition-results && bash scripts/deploy-docker-server.sh main
+```
+
+السكربت يكتشف أن GitHub غير متاح ويكمل بالنسخة التي وصلت عبر `git push server`.
 
 ## 12. النسخ الاحتياطي
 
@@ -256,10 +287,15 @@ sudo ufw status              # إن كان مفعلاً: sudo ufw allow 'Nginx F
 | متصفح الزائر | ملفات الواجهة `/build` والنتائج `/data/{نسخة}` | سنة (تتغير أسماؤها عند كل تحديث) | الزائر العائد لا يطلبها مجدداً |
 | nginx — ملفات ثابتة | كل النتائج JSON + ملفات الواجهة | دائم | بدون PHP ولا قاعدة بيانات إطلاقاً |
 | nginx — صفحة البوابة `/` | نسخة HTML جاهزة | 60 ثانية | PHP مرة في الدقيقة بدل كل زائر؛ آلاف الزوار معاً = طلب واحد لـ PHP |
-| Redis (الذاكرة) | كاش Laravel، الجلسات، عدادات الحماية، إحصائيات لوحة التحكم | حتى أي تعديل | لا كتابة في قاعدة البيانات مع كل طلب |
+| كاش Laravel (قاعدة البيانات، أو Redis إن فُعّل) | إحصائيات لوحة التحكم، الجلسات، عدادات الحماية | حتى أي تعديل | لا إعادة حساب مع كل فتح للوحة |
 
 - كل تعديل (استيراد، نشر، تعديل اسم أو متابعة) يمسح الكاش المتعلق به تلقائياً — لا حاجة لأي تدخل.
-- Redis داخل شبكة Docker فقط (غير مكشوف)، وبحد ذاكرة 256MB.
+- **Redis اختياري:** يجعل الجلسات وعدادات الحماية في الذاكرة بدل قاعدة البيانات. يحتاج إنترنت **مرة واحدة** لتنزيله، ثم:
+  ```bash
+  sed -i 's/^CACHE_STORE=.*/CACHE_STORE=redis/; s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/' .env.docker
+  INSTALL_REDIS=true COMPOSE_PROFILES=redis bash scripts/deploy-docker-server.sh main
+  ```
+  ولتشغيله دائماً أضف إلى `~/.bashrc`: `export INSTALL_REDIS=true COMPOSE_PROFILES=redis`
 - `docker/php/www.conf`: عدد عمال PHP (`pm.max_children = 40`).
 - لتحمل أكبر: CDN مثل Cloudflare أمام الموقع — كل ما يطلبه الزوار قابل للتخزين فيه.
 
@@ -269,9 +305,8 @@ sudo ufw status              # إن كان مفعلاً: sudo ufw allow 'Nginx F
 # الطلب الثاني يجب أن يكون HIT (من الكاش)
 curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
 curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
-# Redis يعمل ويحتوي مفاتيح
+# (إن فُعّل Redis)
 docker compose exec redis redis-cli ping
-docker compose exec redis redis-cli info keyspace
 ```
 
 ## 16. الحماية من الاختراق والتخريب
