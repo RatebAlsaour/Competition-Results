@@ -9,7 +9,7 @@
 | `nginx` | يقدّم ملفات النتائج الثابتة وملفات الواجهة مباشرة، ويمرر الباقي إلى PHP. يستمع على `127.0.0.1:8060` |
 | `app` | تطبيق Laravel (PHP 8.3-FPM) |
 | `mysql` | قاعدة بيانات MySQL 8.4 (غير مكشوفة للخارج) |
-| `redis` | كاش وجلسات وعدادات الحماية في الذاكرة (غير مكشوف للخارج) |
+| `redis` | (اختياري) كاش وجلسات في الذاكرة — انظر القسم 15 |
 
 وحدات التخزين (volumes): `mysql-data` (قاعدة البيانات)، `storage-data` (السجلات والجلسات)، `results-data` (ملفات النتائج الثابتة `public/data`).
 
@@ -104,7 +104,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-يجب أن ترى `mysql` و `redis` (healthy) و `app` و `nginx` بحالة `running`.
+يجب أن ترى `mysql` (healthy) و `app` و `nginx` بحالة `running`.
 
 ## 7. إنشاء الجداول والمستخدم الأول
 
@@ -177,6 +177,41 @@ docker compose up -d --build
 docker compose exec -u www-data app php artisan migrate --force
 docker compose exec -u www-data app php artisan results:build-static
 ```
+
+## 11.1 التحديث عندما لا يصل السيرفر إلى الإنترنت
+
+إذا كانت شبكة السيرفر تمنع الإنترنت (`git pull` يفشل بـ `timed out` أو `Could not resolve`):
+
+- الكود يُرسل من جهازك إلى السيرفر عبر الشبكة الداخلية (`git push server`).
+- ملفات الواجهة (`public/build`) تُبنى على جهازك وتُرسل معه.
+- السيرفر يبني من صور المشروع الموجودة عليه (`Dockerfile.offline`) دون أي تنزيل.
+- شرط: لم تتغير `composer.json` / `composer.lock`. إن تغيرت يلزم إنترنت لبناء كامل مرة واحدة.
+
+**مرة واحدة على السيرفر:**
+
+```bash
+cd /opt/competition-results && git config receive.denyCurrentBranch updateInstead
+```
+
+**مرة واحدة على جهازك** (داخل مجلد المشروع):
+
+```bash
+git remote add server ssh://hr@192.168.1.52/opt/competition-results
+```
+
+**كل تحديث — على جهازك** (بعد `git commit`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/push-to-server.ps1
+```
+
+يبني الواجهة ← يرسل الكود ← يرسل الواجهة (يطلب كلمة مرور السيرفر). ثم **على السيرفر:**
+
+```bash
+cd /opt/competition-results && bash scripts/deploy-docker-server.sh main
+```
+
+السكربت يكتشف غياب الإنترنت ويستخدم البناء البديل تلقائياً. (أو أضف `-Deploy` لسكربت PowerShell ليشغّله عنك.)
 
 ## 12. النسخ الاحتياطي
 
@@ -256,10 +291,15 @@ sudo ufw status              # إن كان مفعلاً: sudo ufw allow 'Nginx F
 | متصفح الزائر | ملفات الواجهة `/build` والنتائج `/data/{نسخة}` | سنة (تتغير أسماؤها عند كل تحديث) | الزائر العائد لا يطلبها مجدداً |
 | nginx — ملفات ثابتة | كل النتائج JSON + ملفات الواجهة | دائم | بدون PHP ولا قاعدة بيانات إطلاقاً |
 | nginx — صفحة البوابة `/` | نسخة HTML جاهزة | 60 ثانية | PHP مرة في الدقيقة بدل كل زائر؛ آلاف الزوار معاً = طلب واحد لـ PHP |
-| Redis (الذاكرة) | كاش Laravel، الجلسات، عدادات الحماية، إحصائيات لوحة التحكم | حتى أي تعديل | لا كتابة في قاعدة البيانات مع كل طلب |
+| كاش Laravel (قاعدة البيانات، أو Redis إن فُعّل) | إحصائيات لوحة التحكم، الجلسات، عدادات الحماية | حتى أي تعديل | لا إعادة حساب مع كل فتح للوحة |
 
 - كل تعديل (استيراد، نشر، تعديل اسم أو متابعة) يمسح الكاش المتعلق به تلقائياً — لا حاجة لأي تدخل.
-- Redis داخل شبكة Docker فقط (غير مكشوف)، وبحد ذاكرة 256MB.
+- **Redis اختياري:** يجعل الجلسات وعدادات الحماية في الذاكرة بدل قاعدة البيانات. يحتاج إنترنت **مرة واحدة** لتنزيله، ثم:
+  ```bash
+  sed -i 's/^CACHE_STORE=.*/CACHE_STORE=redis/; s/^SESSION_DRIVER=.*/SESSION_DRIVER=redis/' .env.docker
+  INSTALL_REDIS=true COMPOSE_PROFILES=redis bash scripts/deploy-docker-server.sh main
+  ```
+  ولتشغيله دائماً أضف إلى `~/.bashrc`: `export INSTALL_REDIS=true COMPOSE_PROFILES=redis`
 - `docker/php/www.conf`: عدد عمال PHP (`pm.max_children = 40`).
 - لتحمل أكبر: CDN مثل Cloudflare أمام الموقع — كل ما يطلبه الزوار قابل للتخزين فيه.
 
@@ -269,9 +309,8 @@ sudo ufw status              # إن كان مفعلاً: sudo ufw allow 'Nginx F
 # الطلب الثاني يجب أن يكون HIT (من الكاش)
 curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
 curl -s -o /dev/null -D - http://127.0.0.1:8060/ | grep -i x-cache-status
-# Redis يعمل ويحتوي مفاتيح
+# (إن فُعّل Redis)
 docker compose exec redis redis-cli ping
-docker compose exec redis redis-cli info keyspace
 ```
 
 ## 16. الحماية من الاختراق والتخريب
@@ -292,6 +331,18 @@ docker compose exec redis redis-cli info keyspace
 | حاويات بلا تصعيد صلاحيات + تدوير السجلات | استغلال حاوية مخترقة، امتلاء القرص بالسجلات | `docker-compose.yml` |
 | السجل الأمني | معرفة من فعل ماذا ومتى ومن أي IP | `storage/logs/security-*.log` |
 | نسخ احتياطي يومي | فقدان البيانات حتى لو حُذف كل شيء | `scripts/backup-db.sh` |
+
+### السيرفر خلف بروكسي (مثل Caddy في شبكة الوزارة) — مهم قبل تفعيل حد الطلبات
+
+إذا كان الزوار يصلون عبر بروكسي أمام السيرفر، يرى السيرفر كل الزوار بعنوان البروكسي، فيعامل حد الطلبات
+وقفل الحساب الجميع كشخص واحد (وقد يحجب الزوار الحقيقيين وقت الضغط). نفّذ مرة واحدة **قبل** نشر نسخة فيها حد الطلبات:
+
+```bash
+cd /opt/competition-results && sudo bash scripts/setup-real-ip.sh
+```
+
+يكتشف عنوان البروكسي من سجل nginx ويسأل للتأكيد، ثم يأخذ عنوان الزائر الحقيقي من `X-Forwarded-For`
+عندما يأتي الطلب من البروكسي فقط. للتراجع: `sudo bash scripts/setup-real-ip.sh --remove`.
 
 ### تفعيل حماية السيرفر (مرة واحدة)
 

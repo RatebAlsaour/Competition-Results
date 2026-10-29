@@ -32,8 +32,12 @@ class ImportController extends Controller
     {
         $sheet = $this->importService->preview($request->file('file')->getRealPath());
 
+        $compare = $this->importService->compare($competition, $sheet);
+
         return ApiResponseService::successResponse([
-            'valid_count'   => count($sheet->rows),
+            'valid_count'    => count($sheet->rows),
+            'existing_count' => $compare['existing'],
+            'new_count'      => $compare['new'],
             'skipped_count' => count($sheet->errors),
             'summary'       => $sheet->summary(),
             'errors'        => array_slice($sheet->errors, 0, 200),
@@ -54,7 +58,9 @@ class ImportController extends Controller
 
         return ApiResponseService::successResponse(
             ResultImportResource::make($import->load('user')),
-            "تم استيراد {$import->imported_count} سجلاً بنجاح",
+            $import->mode === ResultsImportService::MODE_UPSERT
+                ? "تمت إضافة {$import->imported_count} وتحديث {$import->updated_count} سجلاً"
+                : "تم استيراد {$import->imported_count} سجلاً بنجاح",
             201
         );
     }

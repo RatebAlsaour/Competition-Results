@@ -8,6 +8,7 @@
     <meta name="api-base" content="{{ url('/api') }}">
     <meta name="app-base" content="{{ url('/admin') }}">
     <meta name="portal-url" content="{{ url('/') }}">
+    <meta name="exams-url" content="{{ url(config('exams.public_path')) }}">
     <meta name="theme-color" content="#002623">
     <link rel="icon" type="image/png" href="{{ asset('assets/syrian-logo.png') }}">
 

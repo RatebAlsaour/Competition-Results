@@ -3,6 +3,10 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CandidateController;
 use App\Http\Controllers\Admin\CompetitionController;
+use App\Http\Controllers\Admin\ExamController;
+use App\Http\Controllers\Admin\ExamImportController;
+use App\Http\Controllers\Admin\ExamineeController;
+use App\Http\Controllers\Admin\ExamSessionController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\ResultsController;
 use Illuminate\Support\Facades\Route;
@@ -47,5 +51,24 @@ Route::prefix('admin')->middleware('web')->group(function () {
         Route::get('competitions/{competition}/imports', [ImportController::class, 'index']);
         Route::post('competitions/{competition}/imports/preview', [ImportController::class, 'preview']);
         Route::post('competitions/{competition}/imports', [ImportController::class, 'store']);
+
+        // ---- الامتحانات (مثال: التراجمة المحلفين) ----
+        Route::apiResource('exams', ExamController::class);
+        Route::get('exams/{exam}/stats', [ExamController::class, 'stats']);
+
+        Route::get('exams/{exam}/sessions', [ExamSessionController::class, 'index']);
+        Route::put('exam-sessions/{session}', [ExamSessionController::class, 'update']);
+        Route::post('exam-sessions/{session}/copy-to-all', [ExamSessionController::class, 'copyToAll']);
+        Route::put('exam-sessions/{session}/halls', [ExamSessionController::class, 'halls']);
+
+        Route::get('exams/{exam}/examinees', [ExamineeController::class, 'index']);
+        Route::get('exams/{exam}/examinees/options', [ExamineeController::class, 'options']);
+        Route::post('exams/{exam}/examinees', [ExamineeController::class, 'store']);
+        Route::put('examinees/{examinee}', [ExamineeController::class, 'update']);
+        Route::delete('examinees/{examinee}', [ExamineeController::class, 'destroy']);
+
+        Route::get('exams/{exam}/templates/{type}', [ExamImportController::class, 'template'])->whereIn('type', ['results', 'examinees']);
+        Route::post('exams/{exam}/imports/preview', [ExamImportController::class, 'preview']);
+        Route::post('exams/{exam}/imports', [ExamImportController::class, 'store']);
     });
 });

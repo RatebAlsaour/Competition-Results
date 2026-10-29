@@ -6,6 +6,9 @@ import LoginPage from './pages/LoginPage';
 import CompetitionsPage from './pages/CompetitionsPage';
 import CompetitionCreatePage from './pages/CompetitionCreatePage';
 import CompetitionPage from './pages/CompetitionPage';
+import ExamsPage from './pages/exams/ExamsPage';
+import ExamCreatePage from './pages/exams/ExamCreatePage';
+import ExamPage from './pages/exams/ExamPage';
 
 export default function App() {
     const [user, setUser] = useState(undefined); // undefined = جارٍ التحقق، null = غير مسجل
@@ -46,6 +49,12 @@ export default function App() {
                     </div>
                 </div>
             </header>
+            <nav className="sectionnav" aria-label="الأقسام">
+                <div className="sectionnav-inner">
+                    <Link to="/" className={'sectionnav-link' + (!path.startsWith('/exams') ? ' active' : '')}><Icon name="users" /> مسابقات التوظيف</Link>
+                    <Link to="/exams" className={'sectionnav-link' + (path.startsWith('/exams') ? ' active' : '')}><Icon name="file" /> الامتحانات</Link>
+                </div>
+            </nav>
             <main className="page">
                 <Routes path={path} />
             </main>
@@ -58,6 +67,10 @@ function Routes({ path }) {
     if (path === '/competitions/new') return <CompetitionCreatePage />;
     const m = match('/competitions/:id/:tab?', path);
     if (m) return <CompetitionPage key={m.id} id={m.id} tab={m.tab || 'overview'} />;
+    if (path === '/exams') return <ExamsPage />;
+    if (path === '/exams/new') return <ExamCreatePage />;
+    const e = match('/exams/:id/:tab?', path);
+    if (e) return <ExamPage key={e.id} id={e.id} tab={e.tab || 'overview'} />;
     return (
         <div className="card card-pad">
             <p>الصفحة غير موجودة.</p>

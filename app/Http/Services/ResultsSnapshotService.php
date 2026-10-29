@@ -138,7 +138,8 @@ class ResultsSnapshotService
         $this->put($tmp, $list);
         $this->disk()->move($tmp, self::INDEX_FILE);
 
-        $keep = $published->pluck('slug')->all();
+        // مجلد exams يخص قسم الامتحانات (ExamSnapshotService) ولا يُمس هنا
+        $keep = array_merge($published->pluck('slug')->all(), [ExamSnapshotService::DIR]);
         foreach ($this->disk()->directories() as $slug)
         {
             if (!in_array($slug, $keep, true))

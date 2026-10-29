@@ -84,6 +84,22 @@ class ResultsTest extends TestCase
         $this->assertStringContainsString('public', $response->headers->get('Cache-Control'));
     }
 
+    public function test_exams_page_is_separate_and_does_not_mention_the_directorate(): void
+    {
+        $exams = $this->get('/' . config('exams.public_path'))->assertOk();
+        $this->assertEmpty($exams->headers->getCookies());
+        $this->assertStringContainsString('public', $exams->headers->get('Cache-Control'));
+        $exams->assertSee('<meta name="portal-section" content="exams">', false)
+            ->assertSee('<title>الامتحانات — وزارة العدل</title>', false)
+            ->assertSee('<meta name="robots" content="noindex, nofollow">', false)
+            ->assertDontSee('التنمية');
+
+        // الرابط لا يُخمَّن ولا يظهر في البوابة الرئيسية
+        $this->get('/exams')->assertNotFound();
+        $this->get('/')->assertSee('<meta name="portal-section" content="results">', false)
+            ->assertDontSee(config('exams.public_path'));
+    }
+
     private function makeSheet(array $rows): string
     {
         $path = tempnam(sys_get_temp_dir(), 'res') . '.xlsx';
@@ -242,6 +258,59 @@ class ResultsTest extends TestCase
         $this->post("/api/admin/competitions/{$competition->id}/imports", ['file' => $this->upload($extra)], ['Accept' => 'application/json'])
             ->assertCreated();
         $this->assertSame(1, $competition->candidates()->count());
+    }
+
+    public function test_upsert_import_updates_existing_and_adds_new(): void
+    {
+        $competition = $this->competition();
+        $this->admin();
+        $url = "/api/admin/competitions/{$competition->id}/imports";
+
+        $this->post($url, ['file' => $this->upload($this->makeSheet($this->sampleRows()))], ['Accept' => 'application/json'])->assertCreated();
+
+        // متابعة مُدخلة من اللوحة يجب أن تبقى بعد التحديث
+        $khaled = $competition->candidates()->where('full_name', 'خالد احمد المطلق')->first();
+        $khaled->update(['follow_up_status' => 'contracted', 'notes' => 'استلم العقد']);
+
+        $file = $this->makeSheet([
+            ['خالد أحمد المطلق', 'الحسكة', 'رئيس ديوان قضائي', '20/7/2026', 95, 'تعاقد أساسي'],   // موجود: علامة جديدة (وهمزة مختلفة)
+            ['عمر محمد البرخو', 'الحسكة', 'رئيس ديوان قضائي', '8/8/2026', 90, 'تعاقد أساسي'],     // موجود: بلا تغيير
+            ['نجم علي الخليل', 'دمشق', 'ناسخ', '8/8/2026', 80, 'تعاقد أساسي'],                    // موجود: من احتياط إلى أساسي
+            ['نجم علي الخليل', 'حلب', 'ناسخ', '8/8/2026', 60, 'ناجح احتياط'],                     // نفس الاسم في محافظة أخرى: جديد
+            ['اسم جديد تماماً', 'دمشق', 'ناسخ', '8/8/2026', 77, 'ناجح احتياط'],                   // جديد
+        ]);
+
+        $this->post("{$url}/preview", ['file' => $this->upload($file), 'mode' => 'upsert'], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('data.existing_count', 3)
+            ->assertJsonPath('data.new_count', 2);
+
+        $this->post($url, ['file' => $this->upload($file), 'mode' => 'upsert'], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('data.mode', 'upsert')
+            ->assertJsonPath('data.imported_count', 2)
+            ->assertJsonPath('data.updated_count', 2);
+
+        // 4 موجودون + 2 جدد، ولم يُحذف من غاب عن الملف
+        $this->assertSame(6, $competition->candidates()->count());
+        $this->assertSame(1, $competition->candidates()->where('full_name', 'رقيه عباس العبدالله')->count());
+
+        $khaled->refresh();
+        $this->assertSame(95.0, $khaled->score);
+        $this->assertSame('خالد أحمد المطلق', $khaled->full_name);
+        $this->assertSame('contracted', $khaled->follow_up_status->value ?? $khaled->follow_up_status);
+        $this->assertSame('استلم العقد', $khaled->notes);
+        $this->assertSame(1, $khaled->rank);   // أُعيد الترتيب: 95 فوق 90
+
+        $najm = $competition->candidates()->where('full_name', 'نجم علي الخليل')->where('governorate', 'دمشق')->first();
+        $this->assertSame('primary', $najm->status->value ?? $najm->status);
+
+        // إعادة رفع نفس الملف لا تضيف ولا تحدّث شيئاً
+        $this->post($url, ['file' => $this->upload($file), 'mode' => 'upsert'], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('data.imported_count', 0)
+            ->assertJsonPath('data.updated_count', 0);
+        $this->assertSame(6, $competition->candidates()->count());
     }
 
     public function test_candidates_listing_search_filters_and_follow_up(): void

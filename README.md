@@ -65,7 +65,7 @@ npm run build
 
 ```bash
 php artisan results:import recruitment-2026 "path/to/file.xlsx" --dry-run
-php artisan results:import recruitment-2026 "path/to/file.xlsx" [--append] [--force]
+php artisan results:import recruitment-2026 "path/to/file.xlsx" [--update | --append] [--force]
 ```
 
 ### ملف Excel
@@ -82,6 +82,36 @@ php artisan results:import recruitment-2026 "path/to/file.xlsx" [--append] [--fo
 | تاريخ المقابلة | تاريخ المقابلة | |
 
 العلامة وتاريخ المقابلة وحالة المتابعة والملاحظات **لا تُنشر** في البوابة.
+
+## قسم الامتحانات (مثال: مسابقة انتقاء التراجمة المحلفين)
+
+للمسابقات التي فيها امتحان. المتقدم يبحث باسمه في البوابة فيرى **رقمه الامتحاني، التاريخ، الوقت، المكان، القاعة**،
+وبعد صدور النتائج يرى **نتيجته** في المكان نفسه.
+
+سير العمل من لوحة التحكم (**الامتحانات**):
+
+1. **امتحان جديد**: الاسم والتعليمات للمتقدمين.
+2. **استيراد Excel ← الأسماء والأرقام الامتحانية**: يُقرأ الملف كاملاً (ورقة لكل لغة، وعدة جداول في الورقة).
+   - تُنشأ «لغة» لكل قيمة في عمود اللغة. الأرقام الامتحانية بلا اسم (احتياطية) تُتجاهل.
+   - أي عمود إضافي، أو نص مكتوب مكان رقم الملف، يُحفظ **ملاحظة داخلية لا تُنشر** (مثل ملاحظات صحية).
+   - الأرقام الامتحانية المكررة في اللغة نفسها تظهر كتنبيه للمراجعة.
+3. **المواعيد والقاعات**: تاريخ ووقت ومكان لكل لغة (مع «نسخ لكل اللغات»)، وتوزيع القاعات تلقائياً
+   (عدد في القاعة، بترقيم متسلسل بين اللغات) أو يدوياً. يمكن تحديد **قاعة خاصة** لمتقدم (مثل الطابق الأرضي).
+4. **نشر الأرقام والمواعيد**.
+5. بعد الامتحان: **استيراد Excel ← النتائج** (نفس الملف مع عمود «النتيجة»: ناجح / راسب / غائب، و«العلامة» اختياري)،
+   تُطابق عبر اللغة + الرقم الامتحاني. أو إدخالها يدوياً من «المتقدمون والنتائج».
+6. **نشر النتائج** — لا تظهر للعموم قبل هذا الزر.
+
+```bash
+php artisan exams:import translators-2026 "path/to/file.xlsx" --dry-run
+php artisan exams:import translators-2026 "path/to/file.xlsx" [--update | --append] [--force]
+php artisan exams:import translators-2026 "path/to/results.xlsx" --results
+```
+
+البيانات العامة تُنشر ملفات ثابتة مثل المسابقات: `data/exams/index.json` و `data/exams/{slug}/{version}/names.json`.
+الطبقات: `Exam`, `ExamSession`, `ExamHall`, `Examinee` ← `ExamData`, `ExamSessionData`, `ExamineeData` ←
+`ExamRepo`, `ExamSessionRepo`, `ExamineeRepo` ← `ExamService`, `ExamSessionService`, `ExamineeService`,
+`ExamImportService`, `ExamSnapshotService`؛ وقارئ الملف خلف الواجهة `IExamSheetReader`.
 
 ## البنية
 

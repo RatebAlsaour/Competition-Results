@@ -44,6 +44,11 @@ h1, h2, h3 { font-family: 'Qomra', sans-serif; font-weight: 700; margin: 0; line
 .brand-sub { font-size: 12px; color: var(--gold); }
 .topbar-actions { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .topbar-user { color: rgba(237, 235, 224, .85); }
+.sectionnav { background: #06332E; border-bottom: 1px solid rgba(185, 167, 121, .25); }
+.sectionnav-inner { max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 3vw, 32px); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.sectionnav-link { display: inline-flex; align-items: center; gap: 8px; padding: 11px 14px; color: rgba(237, 235, 224, .75); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; border-bottom: 3px solid transparent; }
+.sectionnav-link:hover { color: var(--sand); }
+.sectionnav-link.active { color: var(--sand); border-bottom-color: var(--gold); }
 .page { max-width: 1240px; margin: 0 auto; padding: 24px clamp(16px, 3vw, 32px) 64px; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .page-head h1 { font-size: clamp(24px, 3vw, 30px); }
@@ -137,6 +142,17 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .badge-published { background: var(--ok-bg); color: var(--ink-2); }
 .badge-draft { background: var(--warn-bg); color: #6E5E3E; }
 .badge-archived { background: #ECEBE6; color: var(--muted); }
+.badge-passed { background: var(--ok-bg); color: var(--ink-2); }
+.badge-failed { background: var(--danger-bg); color: var(--danger); }
+.badge-absent { background: #ECEBE6; color: var(--muted); }
+.badge-none { background: var(--warn-bg); color: #6E5E3E; }
+.badge-on { background: var(--ink-2); color: var(--sand); }
+.badge-off { background: #ECEBE6; color: var(--muted); }
+.session-card { background: #fff; border: 1px solid rgba(152, 133, 97, .3); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.session-card.incomplete { border-color: rgba(152, 133, 97, .7); border-style: dashed; }
+.hall-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 14px; font-size: 12px; background: var(--paper); white-space: nowrap; }
+.hall-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) 80px 80px 40px; gap: 8px; align-items: center; }
+@media (max-width: 560px) { .hall-row { grid-template-columns: 1fr 1fr; } }
 .fu-pending { color: var(--muted); }
 .fu-documents_submitted { color: #1F5E8C; }
 .fu-contracted { color: var(--ink-2); }

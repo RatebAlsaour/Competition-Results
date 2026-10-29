@@ -3,9 +3,11 @@ import { api, errorText } from '../api';
 import { Link } from '../router';
 import { Icon, Spinner, formatDate, useToast } from '../ui';
 
+const MODES = { upsert: 'تحديث وإضافة', replace: 'استبدال', append: 'إضافة' };
+
 export default function ImportTab({ competition, onImported }) {
     const [file, setFile] = useState(null);
-    const [mode, setMode] = useState('replace');
+    const [mode, setMode] = useState('upsert');
     const [preview, setPreview] = useState(null);
     const [busy, setBusy] = useState('');
     const [error, setError] = useState('');
@@ -46,7 +48,9 @@ export default function ImportTab({ competition, onImported }) {
         setBusy('import'); setError('');
         try {
             const result = await api.post(base, form(file));
-            toast(`تم استيراد ${result.imported_count} اسماً`);
+            toast(result.mode === 'upsert'
+                ? `تمت إضافة ${result.imported_count} وتحديث ${result.updated_count} اسماً`
+                : `تم استيراد ${result.imported_count} اسماً`);
             setFile(null); setPreview(null);
             if (inputRef.current) inputRef.current.value = '';
             loadHistory();
@@ -80,13 +84,17 @@ export default function ImportTab({ competition, onImported }) {
                 </div>
 
                 <div className="radio-cards" role="radiogroup" aria-label="طريقة الاستيراد">
+                    <label className={'radio-card' + (mode === 'upsert' ? ' checked' : '')}>
+                        <input type="radio" name="mode" value="upsert" checked={mode === 'upsert'} onChange={() => setMode('upsert')} />
+                        <span><strong>تحديث وإضافة</strong><br /><span className="small muted">الاسم الموجود تُحدَّث بياناته (العلامة، النتيجة، التاريخ) وتبقى متابعته وملاحظاته، وغير الموجود يُضاف. لا يُحذف أحد.</span></span>
+                    </label>
                     <label className={'radio-card' + (mode === 'replace' ? ' checked' : '')}>
                         <input type="radio" name="mode" value="replace" checked={mode === 'replace'} onChange={() => setMode('replace')} />
                         <span><strong>استبدال</strong><br /><span className="small muted">حذف الأسماء الحالية واعتماد الملف بالكامل (للنشر الأول أو عند تصحيح الملف).</span></span>
                     </label>
                     <label className={'radio-card' + (mode === 'append' ? ' checked' : '')}>
                         <input type="radio" name="mode" value="append" checked={mode === 'append'} onChange={() => setMode('append')} />
-                        <span><strong>إضافة</strong><br /><span className="small muted">إضافة أسماء الملف إلى الأسماء الحالية (مثلاً نتائج دفعة جديدة).</span></span>
+                        <span><strong>إضافة</strong><br /><span className="small muted">إضافة كل أسماء الملف كما هي دون مقارنة (قد يتكرر الاسم إن كان موجوداً).</span></span>
                     </label>
                 </div>
 
@@ -100,6 +108,13 @@ export default function ImportTab({ competition, onImported }) {
                             <div className={'stat' + (preview.skipped_count ? ' reserve' : '')}><span className="stat-label">أسطر ستُتجاهل</span><span className="stat-value">{preview.skipped_count}</span></div>
                             <div className="stat"><span className="stat-label">الأسماء الحالية في المسابقة</span><span className="stat-value">{preview.current_count}</span></div>
                         </div>
+
+                        {mode === 'upsert' && (
+                            <div className="alert alert-info">
+                                موجودون مسبقاً (تُحدَّث بياناتهم): <strong>{preview.existing_count}</strong> — جدد (سيُضافون): <strong>{preview.new_count}</strong>.
+                                <br /><span className="small">يُعرف الشخص بـ: المحافظة + المسمى الوظيفي + الاسم الكامل. من ليس في الملف يبقى كما هو.</span>
+                            </div>
+                        )}
 
                         {preview.errors.length > 0 && (
                             <div className="alert alert-warn">
@@ -130,7 +145,7 @@ export default function ImportTab({ competition, onImported }) {
 
                         <div className="row">
                             <button type="button" className="btn btn-primary" onClick={confirmImport} disabled={!!busy || !preview.valid_count}>
-                                <Icon name="upload" /> {busy === 'import' ? 'جارٍ الاستيراد...' : `تأكيد استيراد ${preview.valid_count} اسماً (${mode === 'replace' ? 'استبدال' : 'إضافة'})`}
+                                <Icon name="upload" /> {busy === 'import' ? 'جارٍ الاستيراد...' : `تأكيد استيراد ${preview.valid_count} اسماً (${MODES[mode]})`}
                             </button>
                             <button type="button" className="btn btn-outline" onClick={() => { setFile(null); setPreview(null); if (inputRef.current) inputRef.current.value = ''; }} disabled={!!busy}>إلغاء</button>
                         </div>
@@ -143,14 +158,15 @@ export default function ImportTab({ competition, onImported }) {
                 {!history ? <Spinner /> : history.length === 0 ? <p className="muted small" style={{ margin: 0 }}>لم يتم أي استيراد بعد.</p> : (
                     <div className="table-wrap">
                         <table className="table">
-                            <thead><tr><th>التاريخ</th><th>الملف</th><th>الطريقة</th><th>مستورد</th><th>متجاهل</th><th className="hide-sm">بواسطة</th></tr></thead>
+                            <thead><tr><th>التاريخ</th><th>الملف</th><th>الطريقة</th><th>مضاف</th><th>محدَّث</th><th>متجاهل</th><th className="hide-sm">بواسطة</th></tr></thead>
                             <tbody>
                                 {history.map((h) => (
                                     <tr key={h.id}>
                                         <td className="nowrap">{formatDate(h.created_at)}</td>
                                         <td>{h.file_name}</td>
-                                        <td>{h.mode === 'replace' ? 'استبدال' : 'إضافة'}</td>
+                                        <td>{MODES[h.mode] || h.mode}</td>
                                         <td className="num">{h.imported_count}</td>
+                                        <td className="num">{h.mode === 'upsert' ? h.updated_count : '—'}</td>
                                         <td className="num" title={(h.errors || []).map((e) => `السطر ${e.row}: ${e.message}`).join('\n')}>{h.skipped_count}</td>
                                         <td className="hide-sm">{h.user || 'سطر الأوامر'}</td>
                                     </tr>

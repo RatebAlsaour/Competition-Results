@@ -20,7 +20,7 @@ class ImportResultsRequest extends FormRequest
     {
         return [
             'file' => ['required', 'file', 'mimes:xlsx', 'max:' . config('results.max_upload_kb')],
-            'mode' => ['nullable', Rule::in([ResultsImportService::MODE_REPLACE, ResultsImportService::MODE_APPEND])],
+            'mode' => ['nullable', Rule::in([ResultsImportService::MODE_REPLACE, ResultsImportService::MODE_APPEND, ResultsImportService::MODE_UPSERT])],
         ];
     }
 

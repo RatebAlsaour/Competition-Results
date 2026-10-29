@@ -78,3 +78,37 @@ export const ResultsAPI = {
         return d;
     },
 };
+
+// ---- قسم الامتحانات (الأرقام الامتحانية، المواعيد، ثم النتائج) ----
+// exams/index.json ← exams/{slug}/{version}/names.json
+const examIndexes = new Map();
+function examNames(exam) {
+    if (!examIndexes.has(exam.path)) {
+        const p = getJson(exam.path + '/names.json').then(({ sessions, rows }) =>
+            rows.map(([name, s, examNumber, fileNumber, hall, result, score, resultNote]) => ({
+                name, key: normalize(name), session: sessions[s], examNumber, fileNumber,
+                hall: Array.isArray(hall) ? hall[0] : hall, building: Array.isArray(hall) ? hall[1] : null,
+                result: result || null, score: score ?? null, resultNote: resultNote || null,
+            })));
+        p.catch(() => examIndexes.delete(exam.path));
+        examIndexes.set(exam.path, p);
+    }
+    return examIndexes.get(exam.path);
+}
+
+export const ExamsAPI = {
+    // لا امتحانات منشورة = الملف غير موجود بعد (404) → قائمة فارغة
+    getExams: () => getJson('exams/index.json', { cache: 'no-cache' }).catch(() => []),
+
+    // البحث بالاسم في كل اللغات: يعيد { total, items }
+    search: async (exam, text) => {
+        const m = makeMatcher(text);
+        if (m.q.length < NAME_SEARCH_MIN) return { total: 0, items: [] };
+        const all = (await examNames(exam))
+            .filter((x) => m.test(x.key))
+            .map((x) => ({ x, s: m.score(x.key) }))
+            .sort((a, b) => a.s - b.s)
+            .map(({ x }) => x);
+        return { total: all.length, items: all.slice(0, NAME_SEARCH_LIMIT) };
+    },
+};

@@ -1,12 +1,18 @@
 import React from 'react';
 import sx from './sx';
-import { ResultsAPI, normalize, NAME_SEARCH_MIN } from './api';
+import { ResultsAPI, ExamsAPI, normalize, NAME_SEARCH_MIN } from './api';
+import ExamSection from './ExamSection';
 import { makeMatcher, highlightSegments } from './nameMatch';
 import { PatternSides, Crumbs, StatusBadge, DocsNote } from './parts';
 
 const PAGE_SIZE = 20;
 const RING = '0 0 0 3px rgba(185,167,121,.32)';
 const SPLASH_KEY = 'results-portal:splash-seen';
+
+// صفحتان من نفس التطبيق: «/» نتائج المسابقات، وصفحة الامتحانات برابطها الخاص (بلا ذكر مديرية التنمية الإدارية)
+const EXAMS_PAGE = document.querySelector('meta[name="portal-section"]')?.content === 'exams';
+const UNIT = EXAMS_PAGE ? null : 'مديرية التنمية الإدارية';
+const ORG = UNIT ? 'وزارة العدل — ' + UNIT : 'وزارة العدل';
 
 function splashSeen() {
     try { return sessionStorage.getItem(SPLASH_KEY) === '1'; } catch { return false; }
@@ -19,6 +25,7 @@ export default class App extends React.Component {
     state = {
         splash: !splashSeen(), revealed: splashSeen(), wide: true,
         comps: null, comp: null,
+        exams: [], exam: null,
         nameQ: '', nameRes: null, nameLoading: false, nameError: false,
         govs: [], govsError: false, gov: null, titles: [], titlesLoading: false, title: null,
         open: null, q: '', active: 0,
@@ -44,7 +51,7 @@ export default class App extends React.Component {
             if (r.current && !r.current.contains(e.target)) this.setState({ open: null });
         };
         document.addEventListener('mousedown', this.onDown);
-        this.loadCompetitions();
+        EXAMS_PAGE ? this.loadExams() : this.loadCompetitions();
         if (this.state.splash) {
             this.t1 = setTimeout(() => this.setState({ revealed: true }), reduced ? 1400 : 4400);
             this.t2 = setTimeout(() => this.skipSplash(), reduced ? 1500 : 5000);
@@ -66,6 +73,22 @@ export default class App extends React.Component {
             }
         }
     }
+
+    loadExams() {
+        ExamsAPI.getExams().then((exams) => {
+            const wanted = new URLSearchParams(window.location.search).get('exam');
+            this.setState({ exams, exam: exams.find((x) => x.slug === wanted) || (exams.length === 1 ? exams[0] : null) });
+        });
+    }
+
+    mode() {
+        return EXAMS_PAGE ? 'exam' : 'results';
+    }
+
+    selectExam = (exam) => {
+        this.setState({ exam });
+        try { window.history.replaceState(null, '', window.location.pathname + '?exam=' + encodeURIComponent(exam.slug)); } catch { /* ignore */ }
+    };
 
     // المسابقات المنشورة: مسابقة واحدة تُختار تلقائياً، وأكثر من واحدة تظهر قائمة لاختيارها
     loadCompetitions() {
@@ -322,7 +345,7 @@ export default class App extends React.Component {
                     </div>
                     <div style={sx('margin-top:44px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center')}>
                         <div data-anim="1" style={sx("font-family:'Qomra',sans-serif;font-weight:700;font-size:clamp(28px,4vw,38px);line-height:1.3;color:#EDEBE0;animation:sp-t1 5s cubic-bezier(.22,.61,.36,1) both")}>وزارة العدل</div>
-                        <div data-anim="1" style={sx('font-size:clamp(16px,1.8vw,19px);font-weight:500;color:#B9A779;animation:sp-t2 5s cubic-bezier(.22,.61,.36,1) both')}>مديرية التنمية الإدارية</div>
+                        {UNIT && <div data-anim="1" style={sx('font-size:clamp(16px,1.8vw,19px);font-weight:500;color:#B9A779;animation:sp-t2 5s cubic-bezier(.22,.61,.36,1) both')}>{UNIT}</div>}
                         <div data-anim="1" style={sx('font-size:14px;letter-spacing:.02em;color:#A8997A;animation:sp-t3 5s cubic-bezier(.22,.61,.36,1) both')}>الجمهورية العربية السورية</div>
                     </div>
                     <div data-anim="1" role="progressbar" aria-label="جارٍ التحميل" style={sx('margin-top:40px;width:160px;height:1px;background:rgba(185,167,121,.22);overflow:hidden;animation:sp-barwrap 5s ease both')}>
@@ -345,9 +368,11 @@ export default class App extends React.Component {
                         <span style={sx('width:6px;height:6px;border:1px solid #B9A779;transform:rotate(45deg)')} />
                         <span style={sx('width:44px;height:1px;background:linear-gradient(to right,#B9A779,rgba(185,167,121,0))')} />
                     </div>
-                    <h1 id="hero-title" style={sx("margin:0;font-family:'Qomra',sans-serif;font-weight:700;font-size:clamp(32px,4.6vw,44px);line-height:1.25;color:#EDEBE0;text-wrap:balance")}>{this.state.comp ? 'نتائج ' + this.state.comp.title : 'نتائج المسابقات'}</h1>
-                    <p style={sx('margin:14px 0 0;font-size:clamp(16px,1.7vw,18px);font-weight:500;color:#B9A779')}>وزارة العدل — مديرية التنمية الإدارية</p>
-                    <p style={sx('margin:18px 0 0;max-width:560px;font-size:15px;line-height:1.9;color:rgba(237,235,224,.82);text-wrap:pretty')}>{this.state.comp?.description || 'يمكنكم الاستعلام عن أسماء المقبولين من خلال اختيار المسابقة والمحافظة والمسمى الوظيفي.'}</p>
+                    <h1 id="hero-title" style={sx("margin:0;font-family:'Qomra',sans-serif;font-weight:700;font-size:clamp(32px,4.6vw,44px);line-height:1.25;color:#EDEBE0;text-wrap:balance")}>{this.mode() === 'exam' ? (this.state.exam?.title || 'الامتحانات') : (this.state.comp ? 'نتائج ' + this.state.comp.title : 'نتائج المسابقات')}</h1>
+                    <p style={sx('margin:14px 0 0;font-size:clamp(16px,1.7vw,18px);font-weight:500;color:#B9A779')}>{ORG}</p>
+                    <p style={sx('margin:18px 0 0;max-width:560px;font-size:15px;line-height:1.9;color:rgba(237,235,224,.82);text-wrap:pretty')}>{this.mode() === 'exam'
+                        ? (this.state.exam?.description || 'ابحث باسمك لمعرفة رقمك الامتحاني وموعد ومكان الامتحان، ثم نتيجتك عند صدورها.')
+                        : (this.state.comp?.description || 'يمكنكم الاستعلام عن أسماء المقبولين من خلال اختيار المسابقة والمحافظة والمسمى الوظيفي.')}</p>
                 </div>
             </section>
         );
@@ -976,12 +1001,12 @@ export default class App extends React.Component {
                 <div style={sx(`flex:1;display:flex;flex-direction:column;opacity:${s.revealed ? 1 : 0};transform:${s.revealed ? 'none' : 'translateY(12px)'};transition:opacity 700ms cubic-bezier(.22,.61,.36,1), transform 700ms cubic-bezier(.22,.61,.36,1)`)}>
                     <header style={sx('background:#002623;border-bottom:1px solid rgba(185,167,121,.4)')}>
                         <div style={sx('max-width:1200px;margin:0 auto;padding:14px clamp(16px,4vw,40px);display:flex;align-items:center;justify-content:space-between;gap:16px')}>
-                            <a href="#top" onClick={this.goHome} aria-label="وزارة العدل — مديرية التنمية الإدارية" style={sx('display:flex;align-items:center;gap:clamp(12px,2vw,20px);text-decoration:none;min-width:0')}>
+                            <a href="#top" onClick={this.goHome} aria-label={ORG} style={sx('display:flex;align-items:center;gap:clamp(12px,2vw,20px);text-decoration:none;min-width:0')}>
                                 <img src="assets/syrian-logo.png" alt="شعار الجمهورية العربية السورية" style={sx('height:clamp(40px,5vw,54px);width:auto;display:block;flex-shrink:0')} />
                                 <span aria-hidden="true" style={sx('width:1px;height:38px;background:rgba(185,167,121,.45);flex-shrink:0')} />
                                 <span style={sx('display:flex;flex-direction:column;gap:2px;min-width:0')}>
                                     <span style={sx("font-family:'Qomra',sans-serif;font-weight:700;font-size:clamp(17px,2vw,21px);line-height:1.3;color:#EDEBE0")}>وزارة العدل</span>
-                                    <span style={sx('font-size:13px;line-height:1.5;color:#B9A779;white-space:nowrap')}>مديرية التنمية الإدارية</span>
+                                    <span style={sx('font-size:13px;line-height:1.5;color:#B9A779;white-space:nowrap')}>{UNIT || 'الجمهورية العربية السورية'}</span>
                                 </span>
                             </a>
                             <a href="#top" className="h-gold" onClick={this.goHome} aria-label="الصفحة الرئيسية" style={sx('display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border:1px solid rgba(185,167,121,.4);border-radius:6px;color:#EDEBE0;text-decoration:none;font-size:14px;white-space:nowrap;flex-shrink:0;transition:background 200ms, border-color 200ms')}>
@@ -1016,7 +1041,9 @@ export default class App extends React.Component {
 
                     <main style={sx('flex:1;padding:0 clamp(12px,4vw,40px)')}>
                         <div style={sx('max-width:980px;margin:clamp(-104px,-9vw,-88px) auto 0;position:relative;z-index:2')}>
-                            {s.view === 'query' && this.renderQuery()}
+                            {s.view === 'query' && (this.mode() === 'exam'
+                                ? <ExamSection exams={s.exams} exam={s.exam} onSelectExam={this.selectExam} wide={s.wide} />
+                                : this.renderQuery())}
 
                             {s.view === 'results' && s.status !== 'idle' && (
                                 <section ref={this.resultsRef} aria-labelledby="res-title" aria-live="polite" aria-busy={s.status === 'loading'}
@@ -1040,9 +1067,9 @@ export default class App extends React.Component {
                                 <img src="assets/syrian-logo.png" alt="شعار الجمهورية العربية السورية" style={sx('height:52px;width:auto;display:block')} />
                                 <span aria-hidden="true" style={sx('width:1px;height:44px;background:rgba(185,167,121,.35)')} />
                                 <div style={sx('display:flex;flex-direction:column;gap:4px')}>
-                                    <span style={sx("font-family:'Qomra',sans-serif;font-weight:700;font-size:17px;line-height:1.4")}>وزارة العدل — مديرية التنمية الإدارية</span>
+                                    <span style={sx("font-family:'Qomra',sans-serif;font-weight:700;font-size:17px;line-height:1.4")}>{ORG}</span>
                                     <span style={sx('font-size:14px;color:#B9A779')}>الجمهورية العربية السورية</span>
-                                    <span style={sx('font-size:14px;color:rgba(237,235,224,.82)')}>بوابة نتائج المسابقات</span>
+                                    <span style={sx('font-size:14px;color:rgba(237,235,224,.82)')}>{EXAMS_PAGE ? 'بوابة الامتحانات' : 'بوابة نتائج المسابقات'}</span>
                                 </div>
                             </div>
                             <button type="button" className="h-gold" onClick={this.toTop} style={sx('height:44px;padding:0 16px;display:flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(185,167,121,.4);border-radius:6px;color:#EDEBE0;font-size:14px;cursor:pointer;transition:background 200ms, border-color 200ms')}>

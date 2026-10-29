@@ -133,7 +133,8 @@ class CompetitionService
         $base = Str::slug((string) $value) ?: 'competition-' . Str::lower(Str::random(6));
         $slug = $base;
         $i = 2;
-        while ($this->competitionRepo->slugExists($slug, $exceptId))
+        // «exams» محجوز لمجلد ملفات الامتحانات الثابتة
+        while ($slug === ExamSnapshotService::DIR || $this->competitionRepo->slugExists($slug, $exceptId))
         {
             $slug = $base . '-' . $i++;
         }

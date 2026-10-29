@@ -14,6 +14,7 @@ class ImportResultsCommand extends Command
                             {competition : رقم المسابقة أو الرابط المختصر (slug)}
                             {file : مسار ملف الإكسل (xlsx)}
                             {--append : إضافة إلى النتائج الحالية بدلاً من استبدالها}
+                            {--update : تحديث بيانات الموجودين وإضافة غير الموجودين (لا يحذف أحداً)}
                             {--dry-run : فحص الملف دون حفظ}
                             {--force : دون طلب تأكيد}';
 
@@ -58,7 +59,11 @@ class ImportResultsCommand extends Command
             return self::SUCCESS;
         }
 
-        $mode = $this->option('append') ? ResultsImportService::MODE_APPEND : ResultsImportService::MODE_REPLACE;
+        $mode = match (true) {
+            (bool) $this->option('update') => ResultsImportService::MODE_UPSERT,
+            (bool) $this->option('append') => ResultsImportService::MODE_APPEND,
+            default                        => ResultsImportService::MODE_REPLACE,
+        };
         $current = $competition->candidates()->count();
 
         if (!$this->option('force') && $current && $mode === ResultsImportService::MODE_REPLACE
@@ -68,7 +73,9 @@ class ImportResultsCommand extends Command
         }
 
         $import = $importService->import($competition, $file, basename($file), $mode);
-        $this->info("تم استيراد {$import->imported_count} سجلاً بنجاح.");
+        $this->info($mode === ResultsImportService::MODE_UPSERT
+            ? "تمت إضافة {$import->imported_count} وتحديث {$import->updated_count} سجلاً."
+            : "تم استيراد {$import->imported_count} سجلاً بنجاح.");
 
         return self::SUCCESS;
     }

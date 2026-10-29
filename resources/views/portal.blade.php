@@ -3,12 +3,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+@if (($section ?? 'results') === 'exams')
+    <title>الامتحانات — وزارة العدل</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="الاستعلام عن الرقم الامتحاني وموعد ومكان الامتحان ونتيجته — وزارة العدل.">
+    <meta property="og:title" content="الامتحانات — وزارة العدل">
+    <meta property="og:description" content="ابحث باسمك لمعرفة رقمك الامتحاني وموعد ومكان الامتحان، ثم نتيجتك عند صدورها.">
+@else
     <title>نتائج المسابقات — وزارة العدل</title>
     <meta name="description" content="الاستعلام عن أسماء المقبولين في مسابقات وزارة العدل، مديرية التنمية الإدارية.">
-    <meta name="data-base" content="{{ asset('data') }}">
-    <meta name="theme-color" content="#002623">
     <meta property="og:title" content="نتائج المسابقات — وزارة العدل">
     <meta property="og:description" content="الاستعلام عن أسماء المقبولين حسب المحافظة والمسمى الوظيفي.">
+@endif
+    <meta name="portal-section" content="{{ $section ?? 'results' }}">
+    <meta name="data-base" content="{{ asset('data') }}">
+    <meta name="theme-color" content="#002623">
     <meta property="og:image" content="{{ asset('assets/syrian-logo.png') }}">
     <link rel="icon" type="image/png" href="{{ asset('assets/syrian-logo.png') }}">
     <base href="{{ url('/') }}/">

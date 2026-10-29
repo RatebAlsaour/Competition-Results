@@ -18,6 +18,7 @@ class ResultImportResource extends JsonResource
             'file_name'      => $this->file_name,
             'mode'           => $this->mode,
             'imported_count' => $this->imported_count,
+            'updated_count'  => (int) $this->updated_count,
             'skipped_count'  => $this->skipped_count,
             'errors'         => $this->errors ?? [],
             'user'           => $this->user?->name,

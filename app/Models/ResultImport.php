@@ -12,6 +12,7 @@ class ResultImport extends Model
         'file_name',
         'mode',
         'imported_count',
+        'updated_count',
         'skipped_count',
         'errors',
     ];
