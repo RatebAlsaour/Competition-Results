@@ -15,6 +15,8 @@ class ExamData extends BaseDTO
 
     public ?string $instructions = null;
 
+    public ?array $hidden_fields = null;
+
     public ?string $status = null;
 
     public ?bool $results_published = null;
@@ -46,6 +48,7 @@ class ExamData extends BaseDTO
             'slug'              => self::pick($object, 'slug', $current?->slug) ?: $current?->slug,
             'description'       => self::pick($object, 'description', $current?->description),
             'instructions'      => self::pick($object, 'instructions', $current?->instructions),
+            'hidden_fields'     => array_values(array_unique(self::pick($object, 'hidden_fields', $current?->hidden_fields) ?? [])),
             'status'            => $status,
             'results_published' => $resultsPublished === null ? null : filter_var($resultsPublished, FILTER_VALIDATE_BOOLEAN),
             'published_at'      => $publishedAt,

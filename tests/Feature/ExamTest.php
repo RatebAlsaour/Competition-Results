@@ -235,6 +235,36 @@ class ExamTest extends TestCase
         $this->assertSame([null, null, null], array_slice($rows['أحمد علي الخطيب'], 5));
     }
 
+    public function test_hidden_fields_are_not_written_to_public_files(): void
+    {
+        $exam = $this->exam();
+        $this->importExaminees($exam);
+        $this->post("/api/admin/exams/{$exam->id}/imports", ['file' => $this->upload($this->resultsFile()), 'type' => 'results'], ['Accept' => 'application/json'])->assertCreated();
+        $session = $exam->sessions()->where('name', 'إنكليزية')->first();
+        $this->putJson("/api/admin/exam-sessions/{$session->id}", ['exam_date' => '2026-11-28', 'location' => 'كلية الحقوق'])->assertOk();
+
+        $this->putJson("/api/admin/exams/{$exam->id}", ['results_published' => true, 'hidden_fields' => ['score', 'location', 'file_number']])
+            ->assertOk()
+            ->assertJsonPath('data.hidden_fields', ['score', 'location', 'file_number'])
+            ->assertJsonPath('data.public_fields.hall', 'القاعة');
+
+        $index = json_decode(Storage::disk('results_static')->get('exams/index.json'), true);
+        $this->assertSame(['score', 'location', 'file_number'], $index[0]['hidden']);
+
+        $names = $this->names();
+        $english = collect($names['sessions'])->firstWhere('name', 'إنكليزية');
+        $this->assertNull($english['location']);
+        $this->assertSame('2026-11-28', $english['date']);
+        $this->assertSame(['passed', null, null], array_slice(collect($names['rows'])->keyBy(0)['دليل عبد المناف سعدو'], 5));
+        $this->assertStringNotContainsString('88 تمديد', json_encode($names, JSON_UNESCAPED_UNICODE));
+
+        // إعادة الإظهار
+        $this->putJson("/api/admin/exams/{$exam->id}", ['hidden_fields' => []])->assertOk();
+        $this->assertSame([82], array_slice(collect($this->names()['rows'])->keyBy(0)['دليل عبد المناف سعدو'], 6, 1));
+
+        $this->putJson("/api/admin/exams/{$exam->id}", ['hidden_fields' => ['password']])->assertUnprocessable();
+    }
+
     public function test_results_template_round_trip(): void
     {
         $exam = $this->exam();

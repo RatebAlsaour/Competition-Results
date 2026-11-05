@@ -118,6 +118,10 @@ h1, h2, h3 { font-family: 'Qomra', sans-serif; font-weight: 700; margin: 0; line
 .radio-card { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid #CFC8B4; border-radius: 6px; background: #fff; cursor: pointer; }
 .radio-card.checked { border-color: var(--gold-2); box-shadow: 0 0 0 3px rgba(185, 167, 121, .22); }
 .radio-card input { margin-top: 4px; accent-color: var(--ink); }
+.field-toggles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.field-toggle { display: flex; gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid #CFC8B4; border-radius: 6px; background: #fff; color: #7D847F; cursor: pointer; text-decoration: line-through; }
+.field-toggle.on { border-color: var(--gold-2); color: var(--ink); font-weight: 600; text-decoration: none; }
+.field-toggle input { accent-color: var(--ink); width: 18px; height: 18px; }
 
 .dropzone { border: 2px dashed rgba(152, 133, 97, .5); border-radius: var(--radius); background: #fff; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color 180ms, background 180ms; }
 .dropzone:hover, .dropzone.over { border-color: var(--gold-2); background: #FDFCF8; }

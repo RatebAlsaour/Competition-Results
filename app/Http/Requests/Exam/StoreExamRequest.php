@@ -25,6 +25,8 @@ class StoreExamRequest extends FormRequest
             'instructions'      => ['nullable', 'string', 'max:5000'],
             'status'            => ['nullable', Rule::in(CompetitionStatusEnum::values())],
             'results_published' => ['nullable', 'boolean'],
+            'hidden_fields'     => ['nullable', 'array'],
+            'hidden_fields.*'   => ['string', Rule::in(array_keys(config('exams.public_fields')))],
         ];
     }
 

@@ -17,6 +17,7 @@ class Exam extends Model implements IHasNullable
         'slug',
         'description',
         'instructions',
+        'hidden_fields',
         'status',
         'results_published',
         'published_at',
@@ -28,7 +29,13 @@ class Exam extends Model implements IHasNullable
         'status'            => CompetitionStatusEnum::class,
         'results_published' => 'boolean',
         'published_at'      => 'datetime',
+        'hidden_fields'     => 'array',
     ];
+
+    public function shows(string $field): bool
+    {
+        return !in_array($field, $this->hidden_fields ?? [], true);
+    }
 
     public function sessions(): HasMany
     {

@@ -25,7 +25,7 @@ export default class App extends React.Component {
     state = {
         splash: !splashSeen(), revealed: splashSeen(), wide: true,
         comps: null, comp: null,
-        exams: [], exam: null,
+        exams: null, exam: null,
         nameQ: '', nameRes: null, nameLoading: false, nameError: false,
         govs: [], govsError: false, gov: null, titles: [], titlesLoading: false, title: null,
         open: null, q: '', active: 0,
@@ -1042,7 +1042,7 @@ export default class App extends React.Component {
                     <main style={sx('flex:1;padding:0 clamp(12px,4vw,40px)')}>
                         <div style={sx('max-width:980px;margin:clamp(-104px,-9vw,-88px) auto 0;position:relative;z-index:2')}>
                             {s.view === 'query' && (this.mode() === 'exam'
-                                ? <ExamSection exams={s.exams} exam={s.exam} onSelectExam={this.selectExam} wide={s.wide} />
+                                ? <ExamSection exams={s.exams || []} loaded={s.exams !== null} exam={s.exam} onSelectExam={this.selectExam} wide={s.wide} />
                                 : this.renderQuery())}
 
                             {s.view === 'results' && s.status !== 'idle' && (

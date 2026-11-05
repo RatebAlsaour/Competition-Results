@@ -19,6 +19,8 @@ class ExamResource extends JsonResource
             'slug'              => $this->slug,
             'description'       => $this->description,
             'instructions'      => $this->instructions,
+            'hidden_fields'     => $this->hidden_fields ?? [],
+            'public_fields'     => config('exams.public_fields'),
             'status'            => $this->status->value,
             'status_label'      => $this->status->label(),
             'results_published' => (bool) $this->results_published,

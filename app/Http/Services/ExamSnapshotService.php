@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  *
  * names.json rows: [name, sessionIndex, examNumber, fileNumber, hall] — hall is a name, or [hall, building]
  * and, only when the exam's results are published: [..., result, score, resultNote].
- * Admin notes are never written here.
+ * Admin notes are never written here, nor the fields hidden in the exam settings (hidden_fields).
  */
 class ExamSnapshotService
 {
@@ -75,13 +75,17 @@ class ExamSnapshotService
                 $e->full_name,
                 $index[$e->exam_session_id],
                 $e->exam_number,
-                $e->file_number,
-                $e->hall_name ?: $session->publicHallFor($e->exam_number),
+                $exam->shows('file_number') ? $e->file_number : null,
+                $this->hall($exam, $e->hall_name ?: $session->publicHallFor($e->exam_number)),
             ];
 
             if ($exam->results_published)
             {
-                array_push($row, $e->result?->value, $e->score, $e->result_note);
+                array_push($row,
+                    $exam->shows('result') ? $e->result?->value : null,
+                    $exam->shows('score') ? $e->score : null,
+                    $exam->shows('result_note') ? $e->result_note : null,
+                );
             }
 
             $rows[] = $row;
@@ -90,11 +94,11 @@ class ExamSnapshotService
         $this->put("{$dir}/names.json", [
             'sessions' => $sessions->map(fn ($s) => [
                 'name'     => $s->name,
-                'date'     => $s->exam_date?->format('Y-m-d'),
-                'start'    => $s->start_time,
-                'end'      => $s->end_time,
-                'location' => $s->location,
-                'notes'    => $s->notes,
+                'date'     => $exam->shows('date') ? $s->exam_date?->format('Y-m-d') : null,
+                'start'    => $exam->shows('time') ? $s->start_time : null,
+                'end'      => $exam->shows('time') ? $s->end_time : null,
+                'location' => $exam->shows('location') ? $s->location : null,
+                'notes'    => $exam->shows('notes') ? $s->notes : null,
             ])->values()->all(),
             'rows' => $rows,
         ]);
@@ -114,8 +118,9 @@ class ExamSnapshotService
             'slug'             => $e->slug,
             'title'            => $e->title,
             'description'      => $e->description,
-            'instructions'     => $e->instructions,
+            'instructions'     => $e->shows('instructions') ? $e->instructions : null,
             'resultsPublished' => (bool) $e->results_published,
+            'hidden'           => $e->hidden_fields ?? [],
             'path'             => self::DIR . "/{$e->slug}/{$e->public_version}",
         ])->values()->all();
 
@@ -131,6 +136,18 @@ class ExamSnapshotService
                 $this->disk()->deleteDirectory($path);
             }
         }
+    }
+
+    /**
+     * Hall value without the hidden parts: a name, [name, building], or null.
+     */
+    private function hall(Exam $exam, string|array|null $value): string|array|null
+    {
+        [$name, $building] = is_array($value) ? $value : [$value, null];
+        $name = $exam->shows('hall') ? $name : null;
+        $building = $exam->shows('building') ? $building : null;
+
+        return $building ? [$name, $building] : $name;
     }
 
     private function pruneVersions(string $slug, string $current): void

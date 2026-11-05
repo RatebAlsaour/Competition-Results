@@ -45,7 +45,7 @@ function Highlighted({ name, q }) {
  * قسم الامتحانات: المتقدم يبحث باسمه فيرى رقمه الامتحاني وموعد ومكان الامتحان والقاعة،
  * وبعد نشر النتائج يرى نتيجته في المكان نفسه.
  */
-export default function ExamSection({ exams, exam, onSelectExam, wide }) {
+export default function ExamSection({ exams, loaded, exam, onSelectExam, wide }) {
     const [text, setText] = useState('');
     const [res, setRes] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -93,6 +93,12 @@ export default function ExamSection({ exams, exam, onSelectExam, wide }) {
                     ? 'اكتب اسمك لمعرفة نتيجتك في الامتحان.'
                     : 'اكتب اسمك لمعرفة رقمك الامتحاني، وتاريخ ووقت ومكان الامتحان، والقاعة.'}
             </p>
+
+            {loaded && exams.length === 0 && (
+                <div style={sx('margin-top:24px;padding:14px 16px;border:1px dashed rgba(152,133,97,.5);border-radius:6px;background:#FFFFFF;font-size:14px;line-height:1.8;color:#4F5D58')}>
+                    لم تُنشر الأسماء بعد. يُرجى المتابعة لاحقاً.
+                </div>
+            )}
 
             {exams.length > 1 && (
                 <div style={sx('margin-top:24px;display:flex;flex-direction:column;gap:8px')}>
@@ -166,7 +172,9 @@ function ExamineeDialog({ x, exam, onClose, dialogRef }) {
     const s = x.session;
     const date = formatDate(s.date);
     const time = s.start ? formatTime(s.start) + (s.end ? ' — ' + formatTime(s.end) : '') : null;
-    const showResult = exam.resultsPublished;
+    // الحقول التي أخفاها المشرف من إعدادات الامتحان لا تظهر إطلاقاً (لا «سيُعلن لاحقاً»)
+    const shows = (field) => !(exam.hidden || []).includes(field);
+    const showResult = exam.resultsPublished && (shows('result') || shows('score') || shows('result_note'));
     const instructions = (exam.instructions || '').split('\n').map((l) => l.trim()).filter(Boolean);
 
     const onKey = (e) => {
@@ -204,19 +212,19 @@ function ExamineeDialog({ x, exam, onClose, dialogRef }) {
                     {showResult && (
                         <div style={sx(`margin-bottom:18px;padding:16px 18px;border-radius:8px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;background:${x.result === 'passed' ? '#E4EEEA' : '#FFFFFF'};border:1px solid ${x.result === 'passed' ? 'rgba(5,66,57,.3)' : '#E6E1D3'}`)}>
                             <span style={sx('font-size:15px;font-weight:700;color:#002623')}>النتيجة:</span>
-                            {x.result ? <ResultBadge result={x.result} /> : <span style={sx('font-size:15px;color:#4F5D58')}>لم تصدر بعد</span>}
+                            {shows('result') && (x.result ? <ResultBadge result={x.result} /> : <span style={sx('font-size:15px;color:#4F5D58')}>لم تصدر بعد</span>)}
                             {x.score !== null && <span style={sx('font-size:15px;color:#002623')}>العلامة: <strong style={sx('font-variant-numeric:tabular-nums')}>{x.score}</strong></span>}
                             {x.resultNote && <span style={sx('flex:1 1 100%;font-size:14px;line-height:1.8;color:#3F3A2E')}>{x.resultNote}</span>}
                         </div>
                     )}
 
                     <dl style={sx('margin:0;border-top:1px solid #EAE5D8')}>
-                        {row('التاريخ', date, true)}
-                        {row('الوقت', time, true)}
-                        {row('المكان', s.location)}
-                        {row('القاعة', x.hall, true)}
-                        {x.building && row('البناء', x.building, true)}
-                        {x.fileNumber && row('رقم الملف', String(x.fileNumber))}
+                        {shows('date') && row('التاريخ', date, true)}
+                        {shows('time') && row('الوقت', time, true)}
+                        {shows('location') && row('المكان', s.location)}
+                        {shows('hall') && row('القاعة', x.hall, true)}
+                        {shows('building') && x.building && row('البناء', x.building, true)}
+                        {shows('file_number') && x.fileNumber && row('رقم الملف', String(x.fileNumber))}
                     </dl>
 
                     {s.notes && (

@@ -17,6 +17,8 @@ export default function ExamForm({ initial, onSubmit, submitLabel, extraActions 
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+    const hidden = form.hidden_fields || [];
+    const toggleField = (k) => setForm({ ...form, hidden_fields: hidden.includes(k) ? hidden.filter((x) => x !== k) : [...hidden, k] });
 
     const submit = async (e) => {
         e.preventDefault();
@@ -28,6 +30,7 @@ export default function ExamForm({ initial, onSubmit, submitLabel, extraActions 
                 description: form.description || null,
                 instructions: form.instructions || null,
                 status: form.status,
+                ...(form.public_fields ? { hidden_fields: form.hidden_fields || [] } : {}),
             });
         } catch (err) {
             setError(errorText(err));
@@ -64,6 +67,23 @@ export default function ExamForm({ initial, onSubmit, submitLabel, extraActions 
                     </Field>
                 </div>
             </section>
+
+            {form.public_fields && (
+                <section className="card card-pad">
+                    <h2 className="card-title">ما يظهر للمتقدمين</h2>
+                    <p className="small muted" style={{ margin: '0 0 12px' }}>
+                        ألغِ تحديد أي حقل لإخفائه من نافذة المتقدم في البوابة. الاسم والرقم الامتحاني واللغة تظهر دائماً. يُطبَّق بعد «حفظ التعديلات».
+                    </p>
+                    <div className="field-toggles">
+                        {Object.entries(form.public_fields).map(([key, label]) => (
+                            <label key={key} className={'field-toggle' + (hidden.includes(key) ? '' : ' on')}>
+                                <input type="checkbox" checked={!hidden.includes(key)} onChange={() => toggleField(key)} />
+                                <span>{label}</span>
+                            </label>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             <div className="row">
                 <button type="submit" className="btn btn-primary" disabled={busy || !form.title.trim()}>{busy ? 'جارٍ الحفظ...' : submitLabel}</button>
