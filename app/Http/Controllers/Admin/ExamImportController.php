@@ -45,6 +45,7 @@ class ExamImportController extends Controller
             'has_results'   => $sheet->has_results,
             'halls'         => $sheet->halls,
             'halls_coverage' => (object) $sheet->hallsCoverage(),
+            'schedules'      => (object) $sheet->schedules,
             'summary'       => $sheet->summary(),
             'errors'        => array_slice($sheet->errors, 0, 200),
             'warnings'      => array_slice($sheet->warnings, 0, 200),

@@ -224,6 +224,8 @@ function ExamineeDialog({ x, exam, onClose, dialogRef }) {
                         {shows('location') && row('المكان', s.location)}
                         {shows('hall') && row('القاعة', x.hall, true)}
                         {shows('building') && x.building && row('البناء', x.building, true)}
+                        {shows('seat_row') && x.seatRow && row('الصف', String(x.seatRow), true)}
+                        {shows('seat_number') && x.seatNumber && row('رقم المقعد', String(x.seatNumber), true)}
                         {shows('file_number') && x.fileNumber && row('رقم الملف', String(x.fileNumber))}
                     </dl>
 

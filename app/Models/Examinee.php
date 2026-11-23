@@ -19,13 +19,16 @@ class Examinee extends Model implements IHasNullable
         'full_name',
         'search_key',
         'hall_name',
+        'building',
+        'seat_row',
+        'seat_number',
         'admin_note',
         'result',
         'score',
         'result_note',
     ];
 
-    protected $nullable = ['file_number', 'hall_name', 'admin_note', 'result', 'score', 'result_note'];
+    protected $nullable = ['file_number', 'hall_name', 'building', 'seat_row', 'seat_number', 'admin_note', 'result', 'score', 'result_note'];
 
     protected $casts = [
         'exam_number' => 'integer',
@@ -48,6 +51,26 @@ class Examinee extends Model implements IHasNullable
      */
     public function hall(): ?string
     {
-        return $this->hall_name ?: $this->session?->hallFor($this->exam_number);
+        if ($this->hall_name)
+        {
+            return $this->hall_name . ($this->building ? " — {$this->building}" : '');
+        }
+        return $this->session?->hallFor($this->exam_number);
+    }
+
+    /**
+     * For the public file: [hall, building, row, seat] without the empty tail, or just the hall name.
+     */
+    public function publicHall(): string|array|null
+    {
+        $hall = $this->hall_name
+            ? [$this->hall_name, $this->building]
+            : (array) $this->session?->publicHallFor($this->exam_number);
+
+        $value = array_pad(array_values($hall), 2, null);
+        array_push($value, $this->seat_row, $this->seat_number);
+
+        while ($value && end($value) === null) array_pop($value);
+        return count($value) > 1 ? $value : ($value[0] ?? null);
     }
 }

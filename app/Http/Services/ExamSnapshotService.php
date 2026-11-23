@@ -17,7 +17,8 @@ use Illuminate\Support\Str;
  *   exams/index.json                 published exams + current version path        (short cache)
  *   exams/{slug}/{version}/names.json  sessions (date, time, place) + every examinee  (immutable)
  *
- * names.json rows: [name, sessionIndex, examNumber, fileNumber, hall] — hall is a name, or [hall, building]
+ * names.json rows: [name, sessionIndex, examNumber, fileNumber, hall] — hall is a name, or [hall, building, row, seat]
+ * (without the empty tail)
  * and, only when the exam's results are published: [..., result, score, resultNote].
  * Admin notes are never written here, nor the fields hidden in the exam settings (hidden_fields).
  */
@@ -76,7 +77,7 @@ class ExamSnapshotService
                 $index[$e->exam_session_id],
                 $e->exam_number,
                 $exam->shows('file_number') ? $e->file_number : null,
-                $this->hall($exam, $e->hall_name ?: $session->publicHallFor($e->exam_number)),
+                $this->hall($exam, $e->setRelation('session', $session)->publicHall()),
             ];
 
             if ($exam->results_published)
@@ -139,15 +140,18 @@ class ExamSnapshotService
     }
 
     /**
-     * Hall value without the hidden parts: a name, [name, building], or null.
+     * Hall value without the hidden parts: a name, or [name, building, row, seat] without the empty tail.
      */
     private function hall(Exam $exam, string|array|null $value): string|array|null
     {
-        [$name, $building] = is_array($value) ? $value : [$value, null];
-        $name = $exam->shows('hall') ? $name : null;
-        $building = $exam->shows('building') ? $building : null;
+        $value = array_pad(is_array($value) ? array_values($value) : [$value], 4, null);
+        foreach (['hall', 'building', 'seat_row', 'seat_number'] as $i => $field)
+        {
+            if (!$exam->shows($field)) $value[$i] = null;
+        }
 
-        return $building ? [$name, $building] : $name;
+        while ($value && end($value) === null) array_pop($value);
+        return count($value) > 1 ? $value : ($value[0] ?? null);
     }
 
     private function pruneVersions(string $slug, string $current): void

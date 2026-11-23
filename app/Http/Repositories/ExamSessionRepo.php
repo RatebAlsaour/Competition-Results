@@ -29,12 +29,32 @@ class ExamSessionRepo extends BaseRepo implements IHasDataTransferObjects
 
     /**
      * Find a session by name or create it (used by the import: one session per language).
+     * «الإنكليزية» finds «إنكليزية» (see ExamSession::nameKey).
      */
     public function firstOrCreateByName(Exam $exam, string $name): ExamSession
     {
-        return $exam->sessions()->firstOrCreate(['name' => $name], [
+        return $this->findByName($exam, $name) ?? $exam->sessions()->create([
+            'name'       => $name,
             'sort_order' => (int) $exam->sessions()->max('sort_order') + 1,
         ]);
+    }
+
+    public function findByName(Exam $exam, string $name): ?ExamSession
+    {
+        $key = ExamSession::nameKey($name);
+        return $exam->sessions()->get()->first(fn (ExamSession $s) => ExamSession::nameKey($s->name) === $key);
+    }
+
+    /**
+     * Session id of each name of the file (null when the language doesn't exist yet).
+     *
+     * @param string[] $names
+     * @return array<string, ?int>
+     */
+    public function idsByName(Exam $exam, array $names): array
+    {
+        $ids = $exam->sessions()->get()->mapWithKeys(fn (ExamSession $s) => [ExamSession::nameKey($s->name) => $s->id]);
+        return collect($names)->unique()->mapWithKeys(fn ($name) => [$name => $ids[ExamSession::nameKey($name)] ?? null])->all();
     }
 
     /**

@@ -6,6 +6,7 @@ import { Icon, Spinner, useToast } from '../../ui';
 const MODES = { upsert: 'تحديث وإضافة', replace: 'استبدال', append: 'إضافة' };
 
 const rangeText = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
+const scheduleText = (s) => (s ? [s.exam_date, s.start_time].filter(Boolean).join(' — ') : '—');
 
 export default function ExamImportTab({ exam, onImported }) {
     const [type, setType] = useState('examinees');   // examinees | results
@@ -59,6 +60,7 @@ export default function ExamImportTab({ exam, onImported }) {
             const result = await api.post(base, form(file));
             setDone({ type, mode, ...result });
             if (result.halls) toast(`تم حفظ ${result.halls} قاعة`);
+            if (result.schedules) toast(`تم ضبط موعد ${result.schedules} لغة من الملف`);
             toast(type === 'results' ? `تم تسجيل نتائج ${result.updated} متقدماً`
                 : mode === 'upsert' ? `تمت إضافة ${result.imported} وتحديث ${result.updated} متقدماً`
                 : `تم استيراد ${result.imported} متقدماً`);
@@ -69,6 +71,7 @@ export default function ExamImportTab({ exam, onImported }) {
     };
 
     const resultsWithoutColumn = type === 'results' && preview && !preview.has_results;
+    const hasSchedules = type === 'examinees' && Object.keys(preview?.schedules || {}).length > 0;
 
     return (
         <div className="stack">
@@ -184,12 +187,12 @@ export default function ExamImportTab({ exam, onImported }) {
 
                         <div className="table-wrap">
                             <table className="table">
-                                <thead><tr><th>اللغة</th><th>العدد</th>{preview.has_results && <><th>ناجح</th><th>راسب</th><th>غائب</th></>}</tr></thead>
+                                <thead><tr><th>اللغة</th><th>العدد</th>{hasSchedules && <th>الموعد من الملف</th>}{preview.has_results && <><th>ناجح</th><th>راسب</th><th>غائب</th></>}</tr></thead>
                                 <tbody>
                                     {preview.summary.map((s) => (
                                         <tr key={s.session}>
                                             <td className="name">{s.session}</td>
-                                            <td className="num"><strong>{s.total}</strong></td>
+                                            <td className="num"><strong>{s.total}</strong></td>{hasSchedules && <td className="num">{scheduleText(preview.schedules[s.session])}</td>}
                                             {preview.has_results && <><td className="num">{s.passed}</td><td className="num">{s.failed}</td><td className="num">{s.absent}</td></>}
                                         </tr>
                                     ))}

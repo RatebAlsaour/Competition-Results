@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Classes\ArabicNormalizer;
 use App\Interfaces\IHasNullable;
 use App\Traits\HasNullable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,14 @@ class ExamSession extends Model implements IHasNullable
     protected $casts = [
         'exam_date' => 'date',
     ];
+
+    /**
+     * Comparison key of a language name: «الإنكليزية» = «إنكليزية» = «انكليزيه».
+     */
+    public static function nameKey(string $name): string
+    {
+        return preg_replace('/^ال/u', '', ArabicNormalizer::searchKey($name));
+    }
 
     public function exam(): BelongsTo
     {

@@ -21,6 +21,12 @@ class ExamineeData extends BaseDTO
 
     public ?string $hall_name = null;
 
+    public ?string $building = null;
+
+    public ?string $seat_row = null;
+
+    public ?string $seat_number = null;
+
     public ?string $admin_note = null;
 
     public ?string $result = null;
@@ -55,6 +61,9 @@ class ExamineeData extends BaseDTO
             'full_name'       => $fullName,
             'search_key'      => $fullName !== null ? ArabicNormalizer::searchKey($fullName) : null,
             'hall_name'       => self::clean(self::pick($object, 'hall_name', $current?->hall_name)),
+            'building'        => self::clean(self::pick($object, 'building', $current?->building)),
+            'seat_row'        => self::clean(self::pick($object, 'seat_row', $current?->seat_row)),
+            'seat_number'     => self::clean(self::pick($object, 'seat_number', $current?->seat_number)),
             'admin_note'      => self::clean(self::pick($object, 'admin_note', $current?->admin_note)),
             'result'          => ($result instanceof \BackedEnum ? $result->value : $result) ?: null,
             'score'           => is_numeric($score) ? (float) $score : null,

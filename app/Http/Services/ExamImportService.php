@@ -47,7 +47,7 @@ class ExamImportService
      */
     public function compare(Exam $exam, ExamSheetReadResultData $sheet): array
     {
-        $sessionIds = $exam->sessions()->pluck('id', 'name');
+        $sessionIds = $this->sessionRepo->idsByName($exam, array_column($sheet->rows, 'session'));
 
         $rows = array_map(fn (array $row) => [
             'exam_session_id' => $sessionIds[$row['session']] ?? null,
@@ -99,6 +99,7 @@ class ExamImportService
 
             $this->examineeRepo->insertMany($rows);
             $halls = $this->applyHalls($exam, $sheet, $hallsSession);
+            $schedules = $this->applySchedules($sessions, $sheet);
             $this->examService->flush($exam);
 
             return [
@@ -108,6 +109,7 @@ class ExamImportService
                 'skipped'   => count($sheet->errors),
                 'sessions'  => count($sessions),
                 'halls'     => $halls,
+                'schedules' => $schedules,
             ];
         });
     }
@@ -136,6 +138,31 @@ class ExamImportService
     }
 
     /**
+     * Date and start time of each language from the file's «التاريخ» / «الساعة» columns.
+     * The place, end time and notes entered from the dashboard are kept.
+     *
+     * @param array<string, \App\Models\ExamSession> $sessions file name => session
+     * @return int number of languages whose schedule was set
+     */
+    private function applySchedules(array $sessions, ExamSheetReadResultData $sheet): int
+    {
+        $count = 0;
+        foreach ($sheet->schedules as $name => $schedule)
+        {
+            $session = $sessions[$name] ?? null;
+            if (!$session) continue;
+
+            $session->fill(array_filter($schedule));
+            if ($session->isDirty())
+            {
+                $session->save();
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    /**
      * Update examinees that already exist and return the rows that are really new.
      * The sheet owns the name and the numbers; results, special halls and notes entered
      * from the dashboard are kept unless the sheet gives a value for them.
@@ -158,7 +185,7 @@ class ExamImportService
             ]);
             // الخانة الفارغة في الملف لا تمسح قيمة موجودة
             $examinee->fill(array_filter(
-                array_intersect_key($row, array_flip(['file_number', 'admin_note', 'result', 'score'])),
+                array_intersect_key($row, array_flip(['file_number', 'hall_name', 'building', 'seat_row', 'seat_number', 'admin_note', 'result', 'score'])),
                 fn ($value) => $value !== null
             ));
 
@@ -240,7 +267,7 @@ class ExamImportService
         $this->securityLog->info('exam.import.results', ['exam_id' => $exam->id, 'file_name' => $fileName, 'rows' => count($sheet->rows)]);
 
         return DB::transaction(function () use ($exam, $sheet) {
-            $sessionIds = $exam->sessions()->pluck('id', 'name');
+            $sessionIds = $this->sessionRepo->idsByName($exam, array_column($sheet->rows, 'session'));
             $updated = 0;
             $unmatched = [];
 

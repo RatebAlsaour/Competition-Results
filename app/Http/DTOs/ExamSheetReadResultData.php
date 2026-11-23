@@ -22,6 +22,9 @@ class ExamSheetReadResultData extends BaseDTO
     /** @var array<int, array{name: string, building: ?string, from_number: int, to_number: int, session: ?string, source: string}> جدول «توزيع القاعات» إن وُجد */
     public array $halls = [];
 
+    /** @var array<string, array{exam_date: ?string, start_time: ?string}> موعد كل لغة من عمودي «التاريخ» و«الساعة» إن وُجدا */
+    public array $schedules = [];
+
     public static function fromObject($object, ...$args): self
     {
         return new self([
@@ -31,6 +34,7 @@ class ExamSheetReadResultData extends BaseDTO
             'placeholders' => $object->placeholders ?? 0,
             'has_results'  => $object->has_results ?? false,
             'halls'        => $object->halls ?? [],
+            'schedules'    => $object->schedules ?? [],
         ]);
     }
 

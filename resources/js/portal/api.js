@@ -87,7 +87,9 @@ function examNames(exam) {
         const p = getJson(exam.path + '/names.json').then(({ sessions, rows }) =>
             rows.map(([name, s, examNumber, fileNumber, hall, result, score, resultNote]) => ({
                 name, key: normalize(name), session: sessions[s], examNumber, fileNumber,
-                hall: Array.isArray(hall) ? hall[0] : hall, building: Array.isArray(hall) ? hall[1] : null,
+                // hall: اسم القاعة، أو [القاعة، البناء، الصف، المقعد]
+                hall: Array.isArray(hall) ? hall[0] : hall, building: Array.isArray(hall) ? hall[1] || null : null,
+                seatRow: Array.isArray(hall) ? hall[2] ?? null : null, seatNumber: Array.isArray(hall) ? hall[3] ?? null : null,
                 result: result || null, score: score ?? null, resultNote: resultNote || null,
             })));
         p.catch(() => examIndexes.delete(exam.path));

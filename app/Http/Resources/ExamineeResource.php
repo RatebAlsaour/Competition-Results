@@ -23,6 +23,9 @@ class ExamineeResource extends JsonResource
             'full_name'       => $this->full_name,
             'hall'            => $this->hall(),          // القاعة الفعلية (خاصة أو من التوزيع)
             'hall_name'       => $this->hall_name,       // القاعة الخاصة فقط
+            'building'        => $this->building,        // بناء القاعة الخاصة
+            'seat_row'        => $this->seat_row,
+            'seat_number'     => $this->seat_number,
             'admin_note'      => $this->admin_note,
             'result'          => $this->result?->value,
             'result_label'    => $this->result?->label(),

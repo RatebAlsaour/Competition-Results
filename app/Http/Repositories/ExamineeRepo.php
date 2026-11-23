@@ -122,6 +122,6 @@ class ExamineeRepo extends BaseRepo implements IHasSearchable, IHasFilterable, I
     {
         return $exam->examinees()
             ->orderBy('exam_session_id')->orderBy('exam_number')
-            ->get(['exam_session_id', 'exam_number', 'file_number', 'full_name', 'hall_name', 'result', 'score', 'result_note']);
+            ->get(['exam_session_id', 'exam_number', 'file_number', 'full_name', 'hall_name', 'building', 'seat_row', 'seat_number', 'result', 'score', 'result_note']);
     }
 }

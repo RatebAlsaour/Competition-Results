@@ -151,7 +151,7 @@ export default function ExamineesTab({ exam, onChanged }) {
                                     <td className="name">{x.full_name}</td>
                                     <td>{x.session}</td>
                                     <td className="small">{x.file_number || '—'}</td>
-                                    <td className="small">{x.hall || <span className="muted">غير محددة</span>}{x.hall_name && <span className="muted"> (خاصة)</span>}</td>
+                                    <td className="small">{x.hall || <span className="muted">غير محددة</span>}{x.hall_name && <span className="muted"> (خاصة)</span>}{(x.seat_row || x.seat_number) && <span className="muted"> · صف {x.seat_row || '—'} مقعد {x.seat_number || '—'}</span>}</td>
                                     <td>{resultSelect(x)}</td>
                                     <td className="num">{x.score ?? '—'}</td>
                                     <td className="small muted" style={{ maxWidth: 200 }} title={x.admin_note || ''}>{x.admin_note ? (x.admin_note.length > 36 ? x.admin_note.slice(0, 36) + '…' : x.admin_note) : '—'}</td>
@@ -190,6 +190,9 @@ function ExamineeModal({ exam, examinee, options, defaultSession, onClose, onSav
         exam_number: examinee.exam_number ?? '',
         file_number: examinee.file_number || '',
         hall_name: examinee.hall_name || '',
+        building: examinee.building || '',
+        seat_row: examinee.seat_row || '',
+        seat_number: examinee.seat_number || '',
         admin_note: examinee.admin_note || '',
         result: examinee.result || '',
         score: examinee.score ?? '',
@@ -205,7 +208,8 @@ function ExamineeModal({ exam, examinee, options, defaultSession, onClose, onSav
         const payload = {
             ...form,
             exam_session_id: Number(form.exam_session_id),
-            file_number: form.file_number || null, hall_name: form.hall_name || null, admin_note: form.admin_note || null,
+            file_number: form.file_number || null, hall_name: form.hall_name || null, building: form.building || null,
+            seat_row: form.seat_row || null, seat_number: form.seat_number || null, admin_note: form.admin_note || null,
             result: form.result || null, score: form.score === '' ? null : form.score, result_note: form.result_note || null,
         };
         try {
@@ -246,6 +250,15 @@ function ExamineeModal({ exam, examinee, options, defaultSession, onClose, onSav
                     </Field>
                     <Field label="قاعة خاصة" htmlFor="x-hall" hint="اتركها فارغة لتُحدد تلقائياً من توزيع القاعات. مثال: قاعة في الطابق الأرضي.">
                         <input id="x-hall" className="input" value={form.hall_name} onChange={set('hall_name')} />
+                    </Field>
+                    <Field label="بناء القاعة الخاصة" htmlFor="x-building">
+                        <input id="x-building" className="input" value={form.building} onChange={set('building')} maxLength={100} />
+                    </Field>
+                    <Field label="الصف" htmlFor="x-row">
+                        <input id="x-row" className="input" value={form.seat_row} onChange={set('seat_row')} maxLength={20} />
+                    </Field>
+                    <Field label="رقم المقعد" htmlFor="x-seat">
+                        <input id="x-seat" className="input" value={form.seat_number} onChange={set('seat_number')} maxLength={20} />
                     </Field>
                     <Field label="ملاحظة داخلية" htmlFor="x-note" className="full" hint="للاستخدام الداخلي فقط — لا تظهر للمتقدم ولا للعموم.">
                         <textarea id="x-note" className="textarea" rows={2} value={form.admin_note} onChange={set('admin_note')} />
